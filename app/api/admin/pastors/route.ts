@@ -45,6 +45,26 @@ export async function POST(req: Request) {
     .single();
   if (!member) return NextResponse.json({ error: "Member not found" }, { status: 404 });
 
+  const { data: existingProfile } = await supabase
+    .from("pastor_profile")
+    .select("id")
+    .eq("church_id", session.churchId)
+    .eq("member_id", parsed.data.memberId)
+    .maybeSingle();
+  if (existingProfile) {
+    return NextResponse.json({ error: "This member is already a pastor" }, { status: 400 });
+  }
+
+  const { data: conflictingEmail } = await supabase
+    .from("app_user")
+    .select("id")
+    .eq("church_id", session.churchId)
+    .eq("email", parsed.data.email)
+    .maybeSingle();
+  if (conflictingEmail) {
+    return NextResponse.json({ error: "Login email already in use for this church" }, { status: 400 });
+  }
+
   if (member.email !== parsed.data.email) {
     await supabase
       .from("member")
@@ -52,6 +72,7 @@ export async function POST(req: Request) {
       .eq("id", parsed.data.memberId)
       .eq("church_id", session.churchId);
   }
+
   const { data: profile, error } = await supabase
     .from("pastor_profile")
     .insert({
@@ -65,9 +86,10 @@ export async function POST(req: Request) {
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (parsed.data.branchIds?.length) {
+  const uniqueBranchIds = Array.from(new Set(parsed.data.branchIds ?? []));
+  if (uniqueBranchIds.length) {
     await supabase.from("pastor_branch").insert(
-      parsed.data.branchIds.map((branchId) => ({
+      uniqueBranchIds.map((branchId) => ({
         church_id: session.churchId,
         pastor_profile_id: profile.id,
         branch_id: branchId

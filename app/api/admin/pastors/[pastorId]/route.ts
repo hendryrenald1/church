@@ -51,6 +51,17 @@ export async function PATCH(req: Request, { params }: Props) {
   if (profile.member_id !== parsed.data.memberId)
     return NextResponse.json({ error: "Member cannot be changed" }, { status: 400 });
 
+  const { data: conflictingEmail } = await supabase
+    .from("app_user")
+    .select("id")
+    .eq("church_id", session.churchId)
+    .eq("email", parsed.data.email)
+    .neq("member_id", parsed.data.memberId)
+    .maybeSingle();
+  if (conflictingEmail) {
+    return NextResponse.json({ error: "Login email already in use for this church" }, { status: 400 });
+  }
+
   await supabase
     .from("member")
     .update({ email: parsed.data.email })
@@ -69,9 +80,10 @@ export async function PATCH(req: Request, { params }: Props) {
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
   await supabase.from("pastor_branch").delete().eq("pastor_profile_id", profile.id);
-  if (parsed.data.branchIds?.length) {
+  const uniqueBranchIds = Array.from(new Set(parsed.data.branchIds ?? []));
+  if (uniqueBranchIds.length) {
     await supabase.from("pastor_branch").insert(
-      parsed.data.branchIds.map((branchId) => ({
+      uniqueBranchIds.map((branchId) => ({
         church_id: session.churchId,
         pastor_profile_id: profile.id,
         branch_id: branchId

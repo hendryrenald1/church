@@ -9,10 +9,10 @@ require("dotenv").config({ path: ".env.local" }); // or .env
 
 const { createClient } = require("@supabase/supabase-js");
 
-function requireEnv(name) {
-  const value = process.env[name];
+function requireEnv(userId) {
+  const value = process.env[userId];
   if (!value) {
-    console.error(`Environment variable ${name} is required.`);
+    console.error(`Environment variable ${userId} is required.`);
     process.exit(1);
   }
   return value;
@@ -22,7 +22,7 @@ async function sendReset(email) {
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
   const supabase = createClient(url, serviceRoleKey);
-    const { error } = await supabase.auth.admin.updateUserById("f9fa0b10-e8fa-4a44-a522-a3b29692b9b6" , {
+    const { error } = await supabase.auth.admin.updateUserById(value , {
     password: "StrongPassword123"
   });
   if (error) {
