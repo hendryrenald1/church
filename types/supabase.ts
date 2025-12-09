@@ -127,7 +127,44 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["family_member"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["family_member"]["Row"]>;
       };
+      group: {
+        Row: {
+          id: string;
+          church_id: string;
+          branch_id: string | null;
+          name: string;
+          type: string | null;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["group"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["group"]["Row"]>;
+      };
+      group_member: {
+        Row: {
+          id: string;
+          church_id: string;
+          group_id: string;
+          member_id: string;
+          joined_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["group_member"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["group_member"]["Row"]>;
+      };
+      group_announcement: {
+        Row: {
+          id: string;
+          church_id: string;
+          group_id: string;
+          title: string;
+          body: string;
+          created_at: string;
+          created_by: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["group_announcement"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["group_announcement"]["Row"]>;
+      };
     };
   };
 }
-

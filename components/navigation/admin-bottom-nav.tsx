@@ -10,7 +10,8 @@ import {
   MoreHorizontal,
   UserCog,
   BarChart3,
-  Settings
+  Settings,
+  Layers3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -63,6 +64,14 @@ export function AdminBottomNav({ churchSlug, currentPath, className }: Props) {
               <SheetTitle>More</SheetTitle>
             </SheetHeader>
             <div className="mt-4 space-y-2">
+              <Link
+                href={`/${churchSlug}/admin/groups`}
+                className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium"
+                onClick={() => setOpen(false)}
+              >
+                <Layers3 className="h-4 w-4" />
+                Groups
+              </Link>
               <Link
                 href={`/${churchSlug}/admin/pastors`}
                 className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium"

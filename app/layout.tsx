@@ -1,5 +1,7 @@
 import "./globals.css";
 import { ReactNode } from "react";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 
@@ -10,10 +12,13 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background text-foreground antialiased")}>
-        {children}
-        <Toaster />
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          {children}
+          <ThemeToggle className="fixed right-4 top-4 z-50" />
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

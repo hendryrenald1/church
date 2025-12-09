@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Users, Home, Building2, UserCog, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Home, Building2, UserCog, Settings, Layers3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/navigation/logout-button";
 
@@ -10,6 +10,7 @@ const getNavItems = (slug: string) => [
   { label: "Members", href: `/${slug}/admin/members`, icon: Users },
   { label: "Families", href: `/${slug}/admin/families`, icon: Home },
   { label: "Branches", href: `/${slug}/admin/branches`, icon: Building2 },
+  { label: "Groups", href: `/${slug}/admin/groups`, icon: Layers3 },
   { label: "Pastors", href: `/${slug}/admin/pastors`, icon: UserCog }
 ];
 
@@ -19,17 +20,21 @@ const getSecondaryItems = (slug: string) => [
 
 type Props = {
   churchSlug: string;
+  churchName?: string;
   currentPath: string;
   className?: string;
 };
 
-export function AdminSidebar({ churchSlug, currentPath, className }: Props) {
+export function AdminSidebar({ churchSlug, churchName, currentPath, className }: Props) {
   const primary = getNavItems(churchSlug);
   const secondary = getSecondaryItems(churchSlug);
 
   return (
     <aside className={cn("hidden w-64 flex-col border-r bg-card md:flex", className)}>
-      <div className="flex h-16 items-center px-6 text-lg font-semibold">Admin</div>
+      <div className="flex h-20 flex-col justify-center px-6">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Admin</p>
+        <p className="truncate text-lg font-semibold">{churchName ?? churchSlug}</p>
+      </div>
       <nav className="flex-1 space-y-1 px-3">
         {primary.map((item) => {
           const Icon = item.icon;

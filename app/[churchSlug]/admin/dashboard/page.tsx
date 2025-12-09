@@ -12,7 +12,8 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const [branches, members, families, pastors] = await Promise.all([
+  const [churchRes, branches, members, families, pastors] = await Promise.all([
+    supabase.from("church").select("name").eq("id", session.churchId).single(),
     supabase
       .from("branch")
       .select("id", { count: "exact", head: true })
@@ -31,11 +32,12 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
       .eq("church_id", session.churchId)
   ]);
 
-  const errors = [branches.error, members.error, families.error, pastors.error].filter(Boolean);
+  const errors = [churchRes.error, branches.error, members.error, families.error, pastors.error].filter(Boolean);
   if (errors.length) {
     console.error("Dashboard counts failed", errors[0]);
     throw new Error("Failed to load dashboard data");
   }
+  const churchName = churchRes.data?.name ?? params.churchSlug;
 
   const cards: CountResult[] = [
     { label: "Branches", count: branches.count ?? 0 },
@@ -49,7 +51,8 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Admin dashboard</h1>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Admin dashboard</p>
+        <h1 className="text-3xl font-bold text-primary">{churchName}</h1>
         <p className="text-sm text-muted-foreground">Church KPIs and quick links.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
