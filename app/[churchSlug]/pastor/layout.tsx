@@ -1,13 +1,9 @@
 "use client";
 
-import { ReactNode, useState } from "react";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-
-const nav = [
-  { href: "dashboard", label: "Dashboard" },
-  { href: "members", label: "Members" }
-];
+import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { PastorSidebar } from "@/components/navigation/pastor-sidebar";
+import { PastorBottomNav } from "@/components/navigation/pastor-bottom-nav";
 
 export default function PastorLayout({
   params,
@@ -16,49 +12,18 @@ export default function PastorLayout({
   params: { churchSlug: string };
   children: ReactNode;
 }) {
-  const base = `/${params.churchSlug}/pastor/`;
-  const [loggingOut, setLoggingOut] = useState(false);
+  const pathname = usePathname();
+  const churchSlug = params.churchSlug;
 
-  const logout = async () => {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      window.location.href = "/auth/login";
-    } catch (error) {
-      console.error("Failed to logout", error);
-      setLoggingOut(false);
-    }
-  };
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="text-lg font-semibold">Pastor · {params.churchSlug}</div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <nav className="flex gap-4">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={`${base}${item.href}`}
-                  className={cn("hover:text-foreground")}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-            <button
-              type="button"
-              onClick={logout}
-              className="text-primary hover:underline disabled:opacity-60"
-              disabled={loggingOut}
-            >
-              {loggingOut ? "Logging out..." : "Logout"}
-            </button>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+    <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex flex-1">
+        <PastorSidebar churchSlug={churchSlug} currentPath={pathname} className="hidden md:flex" />
+        <main className="flex-1 pb-20 md:pb-0">
+          <div className="mx-auto w-full max-w-6xl px-4 py-8">{children}</div>
+        </main>
+      </div>
+      <PastorBottomNav churchSlug={churchSlug} currentPath={pathname} className="md:hidden" />
     </div>
   );
 }
