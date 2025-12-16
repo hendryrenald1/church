@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { BranchSummary } from "../types";
 import { PastorDetailForm } from "../_components/pastor-detail-form";
+import type { Database } from "@/types/supabase";
 
 type Props = { params: { churchSlug: string; pastorId: string } };
 
@@ -18,7 +19,7 @@ export default async function AdminPastorDetailPage({ params }: Props) {
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const [pastorRes, branchRes] = await Promise.all([
+  const [{ data: pastorData, error: pastorError }, { data: branchData, error: branchError }] = await Promise.all([
     supabase
       .from("pastor_profile")
       .select(
@@ -34,17 +35,26 @@ export default async function AdminPastorDetailPage({ params }: Props) {
       .order("name", { ascending: true })
   ]);
 
-  if (pastorRes.error || !pastorRes.data) {
-    console.error("Failed to load pastor", pastorRes.error);
+  if (pastorError || branchError || !pastorData) {
+    console.error("Failed to load pastor", pastorError ?? branchError);
     notFound();
   }
-  if (branchRes.error) {
-    console.error("Failed to load branches", branchRes.error);
-    throw new Error("Failed to load branches");
-  }
 
-  const pastor = pastorRes.data;
-  const branchOptions = (branchRes.data ?? []) as BranchSummary[];
+  type PastorProfileRow = Database["public"]["Tables"]["pastor_profile"]["Row"];
+  type MemberRow = Database["public"]["Tables"]["member"]["Row"];
+  type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
+
+  type PastorRecord = Pick<PastorProfileRow, "id" | "church_id" | "member_id" | "title" | "ordination_date" | "bio"> & {
+    member: Pick<MemberRow, "id" | "first_name" | "last_name" | "email" | "phone"> & {
+      branch: Pick<BranchRow, "name"> | null;
+    } | null;
+    pastor_branch: Array<{
+      branch: Pick<BranchRow, "id" | "name" | "city" | "is_active"> | null;
+    }> | null;
+  };
+
+  const pastor = pastorData as PastorRecord;
+  const branchOptions = (branchData ?? []) as BranchSummary[];
   const member = pastor.member;
   const branchAssignments =
     pastor.pastor_branch?.map((pb) => ({

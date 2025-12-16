@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 type Props = { params: { branchId: string } };
 
 export async function GET(_: Request, { params }: Props) {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const supabase = createSupabaseServerClient();
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("branch")
     .select("*")
@@ -20,11 +20,12 @@ export async function GET(_: Request, { params }: Props) {
 
 export async function PATCH(req: Request, { params }: Props) {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const payload = await req.json();
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { error } = await supabase
     .from("branch")
+    // @ts-expect-error Supabase type inference issue with branch table
     .update({
       name: payload.name,
       city: payload.city,
@@ -39,8 +40,8 @@ export async function PATCH(req: Request, { params }: Props) {
 
 export async function DELETE(_: Request, { params }: Props) {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const supabase = createSupabaseServerClient();
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const supabase = createSupabaseAdminClient();
   const { error } = await supabase.from("branch").delete().eq("id", params.branchId).eq("church_id", session.churchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

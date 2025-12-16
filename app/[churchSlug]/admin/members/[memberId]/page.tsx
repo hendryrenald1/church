@@ -1,27 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/supabase";
 
 type Props = { params: { churchSlug: string; memberId: string } };
-
-type Member = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-  status: "ACTIVE" | "INACTIVE";
-  joined_date: string;
-  date_of_birth: string | null;
-  baptism_date: string | null;
-  branch: { id: string; name: string | null } | null;
-};
-
-type FamilyMembership = {
-  id: string;
-  relationship: string;
-  family: { id: string; family_name: string | null } | null;
-};
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -35,25 +17,41 @@ export default async function AdminMemberDetailPage({ params }: Props) {
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const { data: member, error } = await supabase
-    .from("member")
-    .select("id, first_name, last_name, email, phone, status, joined_date, date_of_birth, baptism_date, branch:branch_id (id, name)")
-    .eq("church_id", session.churchId)
-    .eq("id", params.memberId)
-    .single();
+  const [{ data: memberData, error: memberError }, { data: familyMemberships, error: familyError }] =
+    await Promise.all([
+      supabase
+        .from("member")
+        .select("id, first_name, last_name, email, phone, status, joined_date, date_of_birth, baptism_date, branch:branch_id (id, name)")
+        .eq("church_id", session.churchId)
+        .eq("id", params.memberId)
+        .single(),
+      supabase
+        .from("family_member")
+        .select("id, relationship, family:family_id (id, family_name)")
+        .eq("member_id", params.memberId)
+        .eq("church_id", session.churchId)
+    ]);
 
-  if (error || !member) {
-    console.error("Failed to load member", error);
+  if (memberError || familyError || !memberData) {
+    console.error("Failed to load member", memberError ?? familyError);
     notFound();
   }
 
-  const { data: familyMemberships } = await supabase
-    .from("family_member")
-    .select("id, relationship, family:family_id (id, family_name)")
-    .eq("member_id", params.memberId)
-    .eq("church_id", session.churchId);
+  type MemberRow = Database["public"]["Tables"]["member"]["Row"];
+  type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
+  type MemberRecord = Pick<
+    MemberRow,
+    "id" | "first_name" | "last_name" | "email" | "phone" | "status" | "joined_date" | "date_of_birth" | "baptism_date"
+  > & { branch: Pick<BranchRow, "id" | "name"> | null };
 
-  const fams = (familyMemberships ?? []) as FamilyMembership[];
+  type FamilyMemberRow = Database["public"]["Tables"]["family_member"]["Row"];
+  type FamilyRow = Database["public"]["Tables"]["family"]["Row"];
+  type FamilyMembershipRecord = Pick<FamilyMemberRow, "id" | "relationship"> & {
+    family: Pick<FamilyRow, "id" | "family_name"> | null;
+  };
+
+  const member = memberData as MemberRecord;
+  const fams = (familyMemberships ?? []) as FamilyMembershipRecord[];
   const fullName = `${member.first_name} ${member.last_name}`;
 
   return (

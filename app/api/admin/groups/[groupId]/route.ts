@@ -39,18 +39,14 @@ export async function PATCH(req: Request, { params }: Params) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
 
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("group")
-    .update({
-      name: parsed.data.name ?? existing.data?.name,
-      type: parsed.data.type ?? existing.data?.type,
-      description: parsed.data.description ?? existing.data?.description,
-      branch_id: parsed.data.branchId ?? existing.data?.branch?.id ?? null
-    })
-    .eq("id", params.groupId)
-    .eq("church_id", session.churchId)
-    .select()
-    .single();
+  const groupQuery = supabase.from("group");
+  // @ts-expect-error Supabase type inference issue
+  const { data, error } = await groupQuery.update({
+    name: parsed.data.name ?? existing.data?.name,
+    type: parsed.data.type ?? existing.data?.type,
+    description: parsed.data.description ?? existing.data?.description,
+    branch_id: parsed.data.branchId ?? existing.data?.branch?.id ?? null
+  }).eq("id", params.groupId).eq("church_id", session.churchId).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }

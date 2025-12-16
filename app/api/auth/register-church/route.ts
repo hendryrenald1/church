@@ -28,22 +28,21 @@ export async function POST(req: Request) {
     const { data: slugTaken } = await supabase.from("church").select("id").eq("slug", slug).maybeSingle();
     if (slugTaken) return NextResponse.json({ error: "Slug taken" }, { status: 409 });
 
-    const { data: church, error: churchErr } = await supabase
-      .from("church")
-      .insert({
-        name,
-        slug,
-        primary_contact_name: primaryContactName,
-        primary_contact_email: primaryContactEmail,
-        status: "PENDING",
-        plan: "FREE"
-      })
-      .select()
-      .single();
+    const churchQuery = supabase.from("church");
+    // @ts-expect-error Supabase type inference issue
+    const { data: churchData, error: churchErr } = await churchQuery.insert({
+      name,
+      slug,
+      primary_contact_name: primaryContactName,
+      primary_contact_email: primaryContactEmail,
+      status: "PENDING",
+      plan: "FREE"
+    }).select().single();
     if (churchErr) {
       console.error("Church insert error:", churchErr);
       return NextResponse.json({ error: churchErr.message }, { status: 500 });
     }
+    const church = churchData as { id: string };
 
     const { data: user, error: signupErr } = await supabase.auth.admin.createUser({
       email: primaryContactEmail,
@@ -60,7 +59,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: signupErr?.message ?? "Signup failed" }, { status: 500 });
     }
 
-    const { error: appUserErr } = await supabase.from("app_user").insert({
+    const appUserQuery = supabase.from("app_user");
+    // @ts-expect-error Supabase type inference issue
+    const { error: appUserErr } = await appUserQuery.insert({
       id: user.user.id,
       email: primaryContactEmail,
       role: "ADMIN",

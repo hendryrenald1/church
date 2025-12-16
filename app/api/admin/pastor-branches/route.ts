@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export async function GET() {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const supabase = createSupabaseServerClient();
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("pastor_branch")
     .select("*")
@@ -16,10 +16,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const payload = await req.json();
-  const supabase = createSupabaseServerClient();
-  const { error } = await supabase.from("pastor_branch").insert({
+  const supabase = createSupabaseAdminClient();
+  const pastorBranchQuery = supabase.from("pastor_branch");
+  // @ts-expect-error Supabase type inference issue
+  const { error } = await pastorBranchQuery.insert({
     church_id: session.churchId,
     pastor_profile_id: payload.pastorProfileId,
     branch_id: payload.branchId

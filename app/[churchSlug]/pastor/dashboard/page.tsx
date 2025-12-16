@@ -17,16 +17,18 @@ export default async function PastorDashboardPage({ params }: { params: { church
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("pastor_profile")
     .select("id")
     .eq("church_id", session.churchId)
     .eq("member_id", session.memberId)
     .maybeSingle();
-  if (profileError || !profile) {
+  if (profileError || !profileData) {
     console.error("Pastor profile missing", profileError);
     notFound();
   }
+
+  const profile = profileData as { id: string };
 
   const { data: branchAssignments, error: branchError } = await supabase
     .from("pastor_branch")

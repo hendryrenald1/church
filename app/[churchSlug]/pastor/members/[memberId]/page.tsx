@@ -12,29 +12,45 @@ export default async function PastorMemberDetailPage({ params }: Props) {
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("pastor_profile")
     .select("id")
     .eq("church_id", session.churchId)
     .eq("member_id", session.memberId)
     .maybeSingle();
-  if (profileError || !profile) notFound();
+  if (profileError || !profileData) notFound();
+
+  const profile = profileData as { id: string };
 
   const { data: assignments } = await supabase
     .from("pastor_branch")
     .select("branch_id")
     .eq("pastor_profile_id", profile.id);
-  const branchIds = (assignments ?? []).map((row) => row.branch_id).filter((id): id is string => Boolean(id));
+  const branchIds = ((assignments ?? []) as { branch_id: string }[]).map((row) => row.branch_id).filter((id): id is string => Boolean(id));
   if (branchIds.length === 0) notFound();
 
-  const { data: member, error } = await supabase
+  const { data: memberData, error } = await supabase
     .from("member")
     .select("id, first_name, last_name, email, phone, branch:branch_id (id, name), status, joined_date, date_of_birth, baptism_date")
     .eq("church_id", session.churchId)
     .eq("id", params.memberId)
     .in("branch_id", branchIds)
     .maybeSingle();
-  if (error || !member) notFound();
+  if (error || !memberData) notFound();
+
+  type MemberRecord = {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string | null;
+    phone: string | null;
+    branch: { id: string; name: string } | null;
+    status: string;
+    joined_date: string;
+    date_of_birth: string | null;
+    baptism_date: string | null;
+  };
+  const member = memberData as MemberRecord;
 
   const displayDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : "—");
 

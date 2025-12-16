@@ -17,16 +17,18 @@ export default async function PastorMembersPage({ params }: { params: { churchSl
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("pastor_profile")
     .select("id")
     .eq("church_id", session.churchId)
     .eq("member_id", session.memberId)
     .single();
-  if (profileError || !profile) {
+  if (profileError || !profileData) {
     console.error("Pastor profile missing", profileError);
     notFound();
   }
+
+  const profile = profileData as { id: string };
 
   const { data: assignments, error: assignmentError } = await supabase
     .from("pastor_branch")
@@ -37,7 +39,7 @@ export default async function PastorMembersPage({ params }: { params: { churchSl
     throw new Error("Failed to load branches");
   }
 
-  const branchIds = (assignments ?? []).map((a) => a.branch_id).filter(Boolean);
+  const branchIds = ((assignments ?? []) as { branch_id: string }[]).map((a) => a.branch_id).filter(Boolean);
   let members: MemberRow[] = [];
   if (branchIds.length > 0) {
     const { data, error } = await supabase

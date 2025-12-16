@@ -1,21 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/supabase";
 import MemberForm from "../../new/member-form";
-
-type Branch = { id: string; name: string };
-type Member = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-  branch_id: string | null;
-  status: "ACTIVE" | "INACTIVE";
-  joined_date: string;
-  date_of_birth: string | null;
-  baptism_date: string | null;
-};
 
 export default async function AdminEditMemberPage({
   params
@@ -28,7 +15,10 @@ export default async function AdminEditMemberPage({
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const [branchesRes, memberRes] = await Promise.all([
+  const [
+    { data: branchesData, error: branchesError },
+    { data: memberData, error: memberError }
+  ] = await Promise.all([
     supabase
       .from("branch")
       .select("id, name")
@@ -42,10 +32,26 @@ export default async function AdminEditMemberPage({
       .single()
   ]);
 
-  if (branchesRes.error || memberRes.error || !memberRes.data) {
-    console.error("Failed to load edit member data", branchesRes.error ?? memberRes.error);
+  if (branchesError || memberError || !memberData) {
+    console.error("Failed to load edit member data", branchesError ?? memberError);
     notFound();
   }
+  type BranchRow = Pick<Database["public"]["Tables"]["branch"]["Row"], "id" | "name">;
+  type MemberRow = Pick<
+    Database["public"]["Tables"]["member"]["Row"],
+    | "id"
+    | "first_name"
+    | "last_name"
+    | "email"
+    | "phone"
+    | "branch_id"
+    | "status"
+    | "joined_date"
+    | "date_of_birth"
+    | "baptism_date"
+  >;
+  const branches = (branchesData ?? []) as BranchRow[];
+  const member = memberData as MemberRow;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -53,11 +59,7 @@ export default async function AdminEditMemberPage({
         <h1 className="text-2xl font-semibold">Edit member</h1>
         <p className="text-sm text-muted-foreground">Update personal info and church details.</p>
       </div>
-      <MemberForm
-        churchSlug={params.churchSlug}
-        branches={(branchesRes.data ?? []) as Branch[]}
-        member={memberRes.data as Member}
-      />
+      <MemberForm churchSlug={params.churchSlug} branches={branches} member={member} />
     </div>
   );
 }

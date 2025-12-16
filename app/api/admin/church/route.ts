@@ -4,7 +4,7 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/sup
 
 export async function GET() {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase.from("church").select("*").eq("id", session.churchId).single();
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const payload = await req.json();
   const supabase = createSupabaseServerClient();
   const adminSupabase = createSupabaseAdminClient();
@@ -25,7 +25,8 @@ export async function PATCH(req: Request) {
   if (fetchError || !currentChurch) {
     return NextResponse.json({ error: fetchError?.message ?? "Church not found" }, { status: 404 });
   }
-  const previousEmail = currentChurch.primary_contact_email;
+  const church = currentChurch as { id: string; name: string; primary_contact_name: string; primary_contact_email: string };
+  const previousEmail = church.primary_contact_email;
   const requestedEmail = payload.primaryContactEmail;
   const emailChanged = Boolean(requestedEmail && requestedEmail !== previousEmail);
   let linkedAppUser: { id: string; email: string } | null = null;
@@ -61,10 +62,9 @@ export async function PATCH(req: Request) {
       if (!linkedAppUser) {
         return NextResponse.json({ error: "Linked admin user not found" }, { status: 404 });
       }
-      const { error: appUserUpdateError } = await adminSupabase
-        .from("app_user")
-        .update({ email: requestedEmail })
-        .eq("id", linkedAppUser.id);
+      const appUserQuery = adminSupabase.from("app_user");
+      // @ts-expect-error Supabase type inference issue
+      const { error: appUserUpdateError } = await appUserQuery.update({ email: requestedEmail }).eq("id", linkedAppUser.id);
       if (appUserUpdateError) {
         console.error("Failed to sync app_user email:", appUserUpdateError);
         return NextResponse.json({ error: "Unable to update linked admin user" }, { status: 500 });
@@ -80,17 +80,18 @@ export async function PATCH(req: Request) {
     updates.primary_contact_email = requestedEmail;
   }
 
-  const { error } = await supabase
-    .from("church")
-    .update(updates)
-    .eq("id", session.churchId);
+  const churchQuery = supabase.from("church");
+  // @ts-expect-error Supabase type inference issue
+  const { error } = await churchQuery.update(updates).eq("id", session.churchId);
   if (error) {
     if (emailChanged && linkedAppUser) {
-      await adminSupabase
-        .from("app_user")
-        .update({ email: linkedAppUser.email })
-        .eq("id", linkedAppUser.id)
-        .catch((revertAppUserError) => console.error("Failed to revert app_user email:", revertAppUserError));
+      try {
+        const appUserRevertQuery = adminSupabase.from("app_user");
+        // @ts-expect-error Supabase type inference issue
+        await appUserRevertQuery.update({ email: linkedAppUser.email }).eq("id", linkedAppUser.id);
+      } catch (revertAppUserError) {
+        console.error("Failed to revert app_user email:", revertAppUserError);
+      }
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

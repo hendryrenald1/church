@@ -18,7 +18,7 @@ const memberSchema = z.object({
 
 export async function GET() {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase.from("member").select("*").eq("church_id", session.churchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -27,12 +27,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const payload = await req.json();
   const parsed = memberSchema.safeParse(payload);
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.from("member").insert({
+  const memberQuery = supabase.from("member");
+  // @ts-expect-error Supabase type inference issue
+  const { error } = await memberQuery.insert({
     church_id: session.churchId,
     branch_id: parsed.data.branchId,
     first_name: parsed.data.firstName,

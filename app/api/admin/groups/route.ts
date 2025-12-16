@@ -24,20 +24,20 @@ export async function GET() {
     .order("name", { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const memberCounts =
-    (
-      await supabase
-        .from("group_member")
-        .select("group_id")
-        .eq("church_id", session.churchId)
-    ).data ?? [];
+  const memberCountsResult = await supabase
+    .from("group_member")
+    .select("group_id")
+    .eq("church_id", session.churchId);
+  const memberCounts = (memberCountsResult.data ?? []) as { group_id: string }[];
   const countMap = memberCounts.reduce<Record<string, number>>((acc, row) => {
     if (!row.group_id) return acc;
     acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
     return acc;
   }, {});
 
-  const payload = (data ?? []).map((group) => ({
+  type GroupRecord = { id: string; name: string; type: string | null; description: string | null; branch: { id: string; name: string } | null };
+  const groupData = (data ?? []) as GroupRecord[];
+  const payload = groupData.map((group) => ({
     ...group,
     memberCount: countMap[group.id] ?? 0
   }));
@@ -55,17 +55,15 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
 
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("group")
-    .insert({
-      church_id: session.churchId,
-      name: parsed.data.name,
-      type: parsed.data.type,
-      description: parsed.data.description,
-      branch_id: parsed.data.branchId
-    })
-    .select()
-    .single();
+  const groupQuery = supabase.from("group");
+  // @ts-expect-error Supabase type inference issue
+  const { data, error } = await groupQuery.insert({
+    church_id: session.churchId,
+    name: parsed.data.name,
+    type: parsed.data.type,
+    description: parsed.data.description,
+    branch_id: parsed.data.branchId
+  }).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);

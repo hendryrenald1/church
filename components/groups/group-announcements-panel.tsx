@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { GroupAnnouncement } from "@/app/[churchSlug]/admin/groups/types";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,15 +18,15 @@ export function GroupAnnouncementsPanel({ groupId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch(`/api/admin/groups/${groupId}/announcements`);
     const data = await res.json().catch(() => []);
     if (Array.isArray(data)) setAnnouncements(data);
-  };
+  }, [groupId]);
 
   useEffect(() => {
     load();
-  }, [groupId]);
+  }, [load]);
 
   const onSubmit = () => {
     setError(null);

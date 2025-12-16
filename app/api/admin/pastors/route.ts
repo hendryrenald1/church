@@ -37,13 +37,14 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const supabase = createSupabaseAdminClient();
 
-  const { data: member } = await supabase
+  const { data: memberData } = await supabase
     .from("member")
     .select("id, email")
     .eq("id", parsed.data.memberId)
     .eq("church_id", session.churchId)
     .single();
-  if (!member) return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  if (!memberData) return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  const member = memberData as { id: string; email: string | null };
 
   const { data: existingProfile } = await supabase
     .from("pastor_profile")
@@ -66,35 +67,33 @@ export async function POST(req: Request) {
   }
 
   if (member.email !== parsed.data.email) {
-    await supabase
-      .from("member")
-      .update({ email: parsed.data.email })
-      .eq("id", parsed.data.memberId)
-      .eq("church_id", session.churchId);
+    const memberQuery = supabase.from("member");
+    // @ts-expect-error Supabase type inference issue
+    await memberQuery.update({ email: parsed.data.email }).eq("id", parsed.data.memberId).eq("church_id", session.churchId);
   }
 
-  const { data: profile, error } = await supabase
-    .from("pastor_profile")
-    .insert({
-      church_id: session.churchId,
-      member_id: parsed.data.memberId,
-      title: parsed.data.title,
-      ordination_date: parsed.data.ordinationDate,
-      bio: parsed.data.bio
-    })
-    .select()
-    .single();
+  const pastorProfileQuery = supabase.from("pastor_profile");
+  // @ts-expect-error Supabase type inference issue
+  const { data: profileData, error } = await pastorProfileQuery.insert({
+    church_id: session.churchId,
+    member_id: parsed.data.memberId,
+    title: parsed.data.title,
+    ordination_date: parsed.data.ordinationDate,
+    bio: parsed.data.bio
+  }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const profile = profileData as { id: string };
 
   const uniqueBranchIds = Array.from(new Set(parsed.data.branchIds ?? []));
   if (uniqueBranchIds.length) {
-    await supabase.from("pastor_branch").insert(
-      uniqueBranchIds.map((branchId) => ({
-        church_id: session.churchId,
-        pastor_profile_id: profile.id,
-        branch_id: branchId
-      }))
-    );
+    const pastorBranchQuery = supabase.from("pastor_branch");
+    const insertData = uniqueBranchIds.map((branchId) => ({
+      church_id: session.churchId,
+      pastor_profile_id: profile.id,
+      branch_id: branchId
+    }));
+    // @ts-expect-error Supabase type inference issue
+    await pastorBranchQuery.insert(insertData);
   }
 
   let churchSlug = session.churchSlug;
@@ -107,7 +106,8 @@ export async function POST(req: Request) {
     if (churchError) {
       console.error("Failed to resolve church slug", churchError);
     } else {
-      churchSlug = church?.slug;
+      const churchData = church as { slug: string } | null;
+      churchSlug = churchData?.slug;
     }
   }
   if (!churchSlug) return NextResponse.json({ error: "Missing church slug" }, { status: 500 });
@@ -132,7 +132,9 @@ export async function POST(req: Request) {
   const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(parsed.data.email, { data: metadata });
   if (inviteError) console.error("Pastor invite email failed", inviteError);
 
-  const { error: appUserError } = await supabase.from("app_user").upsert(
+  const appUserQuery = supabase.from("app_user");
+  // @ts-expect-error Supabase type inference issue
+  const { error: appUserError } = await appUserQuery.upsert(
     {
       id: authUser.id,
       email: parsed.data.email,

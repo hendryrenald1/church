@@ -30,34 +30,34 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseAdminClient();
 
-  const { data, error } = await supabase
-    .from("member")
-    .insert({
-      church_id: session.churchId,
-      branch_id: parsed.data.branchId,
-      first_name: parsed.data.firstName,
-      last_name: parsed.data.lastName,
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      status: parsed.data.status,
-      joined_date: new Date().toISOString(),
-      date_of_birth: null,
-      baptism_date: null
-    })
-    .select("id, first_name, last_name, email, phone, status, branch:branch_id (id, name)")
-    .single();
+  const memberQuery = supabase.from("member");
+  // @ts-expect-error Supabase type inference issue
+  const { data, error } = await memberQuery.insert({
+    church_id: session.churchId,
+    branch_id: parsed.data.branchId,
+    first_name: parsed.data.firstName,
+    last_name: parsed.data.lastName,
+    email: parsed.data.email,
+    phone: parsed.data.phone,
+    status: parsed.data.status,
+    joined_date: new Date().toISOString(),
+    date_of_birth: null,
+    baptism_date: null
+  }).select("id, first_name, last_name, email, phone, status, branch:branch_id (id, name)").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  type MemberRow = { id: string; first_name: string; last_name: string; email: string | null; phone: string | null; status: string; branch: { id: string; name: string } | null };
+  const member = data as MemberRow;
   const response: MemberSearchResult = {
-    id: data.id,
-    firstName: data.first_name,
-    lastName: data.last_name,
-    email: data.email,
-    phone: data.phone,
-    branchId: data.branch?.id ?? null,
-    branchName: data.branch?.name ?? null,
-    status: data.status as MemberSearchResult["status"]
+    id: member.id,
+    firstName: member.first_name,
+    lastName: member.last_name,
+    email: member.email,
+    phone: member.phone,
+    branchId: member.branch?.id ?? null,
+    branchName: member.branch?.name ?? null,
+    status: member.status as MemberSearchResult["status"]
   };
 
   return NextResponse.json(response, { status: 201 });

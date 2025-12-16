@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BranchSummary, PastorListRow } from "./types";
+import type { Database } from "@/types/supabase";
 
 type SearchParams = { query?: string; branchId?: string };
 
@@ -94,7 +95,18 @@ async function getPastors(churchId: string, filters: SearchParams) {
     throw new Error("Failed to load pastors");
   }
 
-  const rows = (data ?? []).map((row) => {
+  type PastorProfileRow = Database["public"]["Tables"]["pastor_profile"]["Row"];
+  type MemberRow = Database["public"]["Tables"]["member"]["Row"];
+  type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
+
+  type PastorQueryRow = Pick<PastorProfileRow, "id" | "title" | "ordination_date"> & {
+    member: Pick<MemberRow, "id" | "first_name" | "last_name" | "email" | "phone" | "status"> | null;
+    pastor_branch: Array<{
+      branch: Pick<BranchRow, "id" | "name" | "city" | "is_active"> | null;
+    }> | null;
+  };
+
+  const rows = ((data ?? []) as PastorQueryRow[]).map((row) => {
     const member = row.member;
     const branches =
       row.pastor_branch?.map((pb) => ({

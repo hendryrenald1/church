@@ -28,7 +28,8 @@ export async function GET(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const members = data ?? [];
+  type MemberRow = { id: string; first_name: string; last_name: string; email: string | null; phone: string | null; status: string; branch_id: string | null };
+  const members = (data ?? []) as MemberRow[];
   const branchIds = Array.from(new Set(members.map((member) => member.branch_id).filter((id): id is string => Boolean(id))));
   let branchMap = new Map<string, string>();
   if (branchIds.length > 0) {
@@ -37,7 +38,8 @@ export async function GET(request: Request) {
       .select("id, name")
       .in("id", branchIds);
     if (branchError) return NextResponse.json({ error: branchError.message }, { status: 500 });
-    branchMap = new Map((branchData ?? []).map((branch) => [branch.id, branch.name]));
+    const branches = (branchData ?? []) as { id: string; name: string }[];
+    branchMap = new Map(branches.map((branch) => [branch.id, branch.name]));
   }
 
   const results: MemberSearchResult[] = members.map((member) => ({

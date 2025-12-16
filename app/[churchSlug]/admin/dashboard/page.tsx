@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/supabase";
 
 type CountResult = { count: number; label: string };
 
@@ -37,7 +38,9 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
     console.error("Dashboard counts failed", errors[0]);
     throw new Error("Failed to load dashboard data");
   }
-  const churchName = churchRes.data?.name ?? params.churchSlug;
+  type ChurchNameRow = Pick<Database["public"]["Tables"]["church"]["Row"], "name">;
+  const churchData = churchRes.data as ChurchNameRow | null;
+  const churchName = churchData?.name ?? params.churchSlug;
 
   const cards: CountResult[] = [
     { label: "Branches", count: branches.count ?? 0 },

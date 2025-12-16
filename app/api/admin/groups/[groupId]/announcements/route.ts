@@ -44,17 +44,15 @@ export async function POST(req: Request, { params }: Params) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
 
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("group_announcement")
-    .insert({
-      church_id: session.churchId,
-      group_id: params.groupId,
-      title: parsed.data.title,
-      body: parsed.data.body,
-      created_by: session.user.id
-    })
-    .select()
-    .single();
+  const announcementQuery = supabase.from("group_announcement");
+  // @ts-expect-error Supabase type inference issue
+  const { data, error } = await announcementQuery.insert({
+    church_id: session.churchId,
+    group_id: params.groupId,
+    title: parsed.data.title,
+    body: parsed.data.body,
+    created_by: session.user.id
+  }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }

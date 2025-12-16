@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { GroupList } from "@/components/groups/group-list";
+import type { Database } from "@/types/supabase";
 import { GroupSummary } from "./types";
 
 export default async function AdminGroupsPage({ params }: { params: { churchSlug: string } }) {
@@ -26,17 +27,26 @@ export default async function AdminGroupsPage({ params }: { params: { churchSlug
     console.error("Failed to load groups", error);
     throw new Error("Failed to load groups");
   }
-  const counts = membersData?.reduce<Record<string, number>>((acc, row) => {
+  type GroupMemberRow = Database["public"]["Tables"]["group_member"]["Row"];
+  const groupMembers = (membersData ?? []) as GroupMemberRow[];
+  const counts = groupMembers.reduce<Record<string, number>>((acc, row) => {
     if (!row.group_id) return acc;
     acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
     return acc;
   }, {}) ?? {};
 
-  const groups: GroupSummary[] =
-    groupsData?.map((group) => ({
-      ...group,
-      memberCount: counts[group.id] ?? 0
-    })) ?? [];
+  type GroupRow = Database["public"]["Tables"]["group"]["Row"];
+  type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
+  const groupsRaw = (groupsData ?? []) as Array<GroupRow & { branch: Pick<BranchRow, "id" | "name"> | null }>;
+
+  const groups: GroupSummary[] = groupsRaw.map((group) => ({
+    id: group.id,
+    name: group.name,
+    type: group.type,
+    description: group.description,
+    branch: group.branch,
+    memberCount: counts[group.id] ?? 0
+  }));
 
   return (
     <div className="space-y-6">

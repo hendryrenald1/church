@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
+import type { Database } from "@/types/supabase";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -67,14 +68,17 @@ export async function POST(req: Request) {
       );
     }
     const supabase = createSupabaseAdminClient();
-    const { data: church, error } = await supabase.from("church").insert({
+    type ChurchInsert = Database["public"]["Tables"]["church"]["Insert"];
+    const insertPayload: ChurchInsert = {
       name: parsed.data.name,
       slug: parsed.data.slug,
       primary_contact_name: parsed.data.primaryContactName,
       primary_contact_email: parsed.data.primaryContactEmail,
       status: parsed.data.status ?? "PENDING",
       plan: parsed.data.plan ?? "FREE"
-    }).select().single();
+    };
+    const churchQuery = supabase.from("church") as any;
+    const { data: church, error } = await churchQuery.insert(insertPayload as ChurchInsert).select().single();
     
     if (error) {
       console.error("POST church error:", error);
@@ -115,12 +119,14 @@ export async function POST(req: Request) {
       }
 
       const authUserId = userData.user.id;
-      const { error: appUserError } = await supabase.from("app_user").insert({
+      type AppUserInsert = Database["public"]["Tables"]["app_user"]["Insert"];
+      const appUserPayload: AppUserInsert = {
         id: authUserId,
         email: adminUser.email,
         role: "ADMIN",
         church_id: church.id
-      });
+      };
+      const { error: appUserError } = await (supabase.from("app_user") as any).insert(appUserPayload);
 
       if (appUserError) {
         console.error("Create app_user error:", appUserError);

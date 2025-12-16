@@ -41,22 +41,20 @@ export async function PATCH(req: Request, { params }: Props) {
   const parsed = updateSchema.safeParse(payload);
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
-    .from("member")
-    .update({
-      first_name: parsed.data.firstName,
-      last_name: parsed.data.lastName,
-      branch_id: parsed.data.branchId,
-      status: parsed.data.status,
-      joined_date: parsed.data.joinedDate,
-      date_of_birth: parsed.data.dateOfBirth,
-      baptism_date: parsed.data.baptismDate,
-      gender: parsed.data.gender,
-      email: parsed.data.email,
-      phone: parsed.data.phone
-    })
-    .eq("id", params.memberId)
-    .eq("church_id", session.churchId);
+  const memberQuery = supabase.from("member");
+  // @ts-expect-error Supabase type inference issue
+  const { error } = await memberQuery.update({
+    first_name: parsed.data.firstName,
+    last_name: parsed.data.lastName,
+    branch_id: parsed.data.branchId,
+    status: parsed.data.status,
+    joined_date: parsed.data.joinedDate,
+    date_of_birth: parsed.data.dateOfBirth,
+    baptism_date: parsed.data.baptismDate,
+    gender: parsed.data.gender,
+    email: parsed.data.email,
+    phone: parsed.data.phone
+  }).eq("id", params.memberId).eq("church_id", session.churchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

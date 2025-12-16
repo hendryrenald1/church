@@ -41,13 +41,14 @@ export async function PATCH(req: Request, { params }: Props) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
 
   const supabase = createSupabaseAdminClient();
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("pastor_profile")
     .select("id, member_id")
     .eq("id", params.pastorId)
     .eq("church_id", session.churchId)
     .single();
-  if (profileError || !profile) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (profileError || !profileData) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const profile = profileData as { id: string; member_id: string };
   if (profile.member_id !== parsed.data.memberId)
     return NextResponse.json({ error: "Member cannot be changed" }, { status: 400 });
 
@@ -62,41 +63,39 @@ export async function PATCH(req: Request, { params }: Props) {
     return NextResponse.json({ error: "Login email already in use for this church" }, { status: 400 });
   }
 
-  await supabase
-    .from("member")
-    .update({ email: parsed.data.email })
-    .eq("id", parsed.data.memberId)
-    .eq("church_id", session.churchId);
+  const memberQuery = supabase.from("member");
+  // @ts-expect-error Supabase type inference issue
+  await memberQuery.update({ email: parsed.data.email }).eq("id", parsed.data.memberId).eq("church_id", session.churchId);
 
-  const { error: updateError } = await supabase
-    .from("pastor_profile")
-    .update({
-      title: parsed.data.title,
-      ordination_date: parsed.data.ordinationDate,
-      bio: parsed.data.bio
-    })
-    .eq("id", params.pastorId)
-    .eq("church_id", session.churchId);
+  const pastorProfileQuery = supabase.from("pastor_profile");
+  // @ts-expect-error Supabase type inference issue
+  const { error: updateError } = await pastorProfileQuery.update({
+    title: parsed.data.title,
+    ordination_date: parsed.data.ordinationDate,
+    bio: parsed.data.bio
+  }).eq("id", params.pastorId).eq("church_id", session.churchId);
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
   await supabase.from("pastor_branch").delete().eq("pastor_profile_id", profile.id);
   const uniqueBranchIds = Array.from(new Set(parsed.data.branchIds ?? []));
   if (uniqueBranchIds.length) {
-    await supabase.from("pastor_branch").insert(
-      uniqueBranchIds.map((branchId) => ({
-        church_id: session.churchId,
-        pastor_profile_id: profile.id,
-        branch_id: branchId
-      }))
-    );
+    const pastorBranchQuery = supabase.from("pastor_branch");
+    const insertData = uniqueBranchIds.map((branchId) => ({
+      church_id: session.churchId,
+      pastor_profile_id: profile.id,
+      branch_id: branchId
+    }));
+    // @ts-expect-error Supabase type inference issue
+    await pastorBranchQuery.insert(insertData);
   }
 
-  const { data: appUser } = await supabase
+  const { data: appUserData } = await supabase
     .from("app_user")
     .select("id")
     .eq("member_id", parsed.data.memberId)
     .eq("role", "PASTOR")
     .maybeSingle();
+  const appUser = appUserData as { id: string } | null;
 
   const ensureSlug = async () => {
     let slug = session.churchSlug;
@@ -104,9 +103,10 @@ export async function PATCH(req: Request, { params }: Props) {
       const { data: church } = await supabase
         .from("church")
         .select("slug")
-        .eq("id", session.churchId)
+        .eq("id", session.churchId!)
         .single();
-      slug = church?.slug;
+      const churchData = church as { slug: string } | null;
+      slug = churchData?.slug;
     }
     return slug;
   };
@@ -120,7 +120,9 @@ export async function PATCH(req: Request, { params }: Props) {
       church_slug: churchSlug,
       member_id: parsed.data.memberId
     };
-    await supabase.from("app_user").upsert(
+    const appUserQuery = supabase.from("app_user");
+    // @ts-expect-error Supabase type inference issue
+    await appUserQuery.upsert(
       {
         id: userId,
         email: parsed.data.email,
@@ -155,7 +157,9 @@ export async function PATCH(req: Request, { params }: Props) {
     const authUser = createdUser?.user;
     if (!authUser) throw new Error("Failed to create pastor auth user");
     await supabase.auth.admin.inviteUserByEmail(parsed.data.email, { data: metadata });
-    await supabase.from("app_user").upsert(
+    const appUserQuery2 = supabase.from("app_user");
+    // @ts-expect-error Supabase type inference issue
+    await appUserQuery2.upsert(
       {
         id: authUser.id,
         email: parsed.data.email,

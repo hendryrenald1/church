@@ -5,14 +5,26 @@ import { z } from "zod";
 
 type Props = { params: { churchId: string } };
 
-async function resolveChurch(ref: string) {
+type ChurchRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  primary_contact_name: string | null;
+  primary_contact_email: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+async function resolveChurch(ref: string): Promise<ChurchRecord | null> {
   const supabase = createSupabaseAdminClient();
   // Try by id first
-  let { data, error } = await supabase.from("church").select("*").eq("id", ref).maybeSingle();
-  if (data) return data;
+  const { data, error } = await supabase.from("church").select("*").eq("id", ref).maybeSingle();
+  if (data) return data as ChurchRecord;
   // Fallback: try slug
   const bySlug = await supabase.from("church").select("*").eq("slug", ref).maybeSingle();
-  if (bySlug.data) return bySlug.data;
+  if (bySlug.data) return bySlug.data as ChurchRecord;
   if (error) throw error;
   if (bySlug.error) throw bySlug.error;
   return null;
@@ -36,7 +48,8 @@ export async function GET(_: Request, { params }: Props) {
     console.error("Failed to load church admins:", adminError);
     return NextResponse.json({ error: "Failed to load admin users" }, { status: 500 });
   }
-  const adminList = (admins ?? []).map((admin) => ({ id: admin.id, email: admin.email }));
+  type AdminUser = { id: string; email: string; role: string; church_id: string };
+  const adminList = ((admins ?? []) as AdminUser[]).map((admin) => ({ id: admin.id, email: admin.email }));
   return NextResponse.json({ ...data, admins: adminList });
 }
 
@@ -96,20 +109,22 @@ export async function PATCH(req: Request, { params }: Props) {
   const adminEmailChanges: { id: string; previousEmail: string }[] = [];
   const rollbackAdminChanges = async () => {
     for (const adminId of createdAdminIds) {
-      await supabase.from("app_user").delete().eq("id", adminId).catch((err) => {
-        console.error("Failed to remove app_user during rollback:", err);
-      });
+      const { error: deleteAppUserError } = await supabase.from("app_user").delete().eq("id", adminId);
+      if (deleteAppUserError) {
+        console.error("Failed to remove app_user during rollback:", deleteAppUserError);
+      }
       const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(adminId);
       if (deleteAuthError) {
         console.error("Failed to remove auth user during rollback:", deleteAuthError);
       }
     }
     for (const change of adminEmailChanges) {
-      await supabase
-        .from("app_user")
-        .update({ email: change.previousEmail })
-        .eq("id", change.id)
-        .catch((err) => console.error("Failed to revert app_user email:", err));
+      const appUserUpdateQuery = supabase.from("app_user");
+      // @ts-expect-error Supabase type inference issue
+      const { error: revertAppUserError } = await appUserUpdateQuery.update({ email: change.previousEmail }).eq("id", change.id);
+      if (revertAppUserError) {
+        console.error("Failed to revert app_user email:", revertAppUserError);
+      }
       const { error: revertAuthError } = await supabase.auth.admin.updateUserById(change.id, {
         email: change.previousEmail,
         email_confirm: true
@@ -127,19 +142,23 @@ export async function PATCH(req: Request, { params }: Props) {
 
   if (primaryContactEmail !== undefined) {
     if (emailChanged) {
-      const { data: directMatch, error: directMatchError } = await supabase
-        .from("app_user")
-        .select("id, email")
-        .eq("church_id", church.id)
-        .eq("email", previousEmail)
-        .maybeSingle();
-      if (directMatchError) {
-        console.error("Failed to load linked admin user:", directMatchError);
-        return NextResponse.json({ error: "Unable to load linked admin user" }, { status: 500 });
+      // Try direct match by email if previous email exists
+      if (previousEmail) {
+        const { data: directMatch, error: directMatchError } = await supabase
+          .from("app_user")
+          .select("id, email")
+          .eq("church_id", church.id)
+          .eq("email", previousEmail)
+          .maybeSingle();
+        if (directMatchError) {
+          console.error("Failed to load linked admin user:", directMatchError);
+          return NextResponse.json({ error: "Unable to load linked admin user" }, { status: 500 });
+        }
+        if (directMatch) {
+          linkedAppUser = directMatch;
+        }
       }
-      if (directMatch) {
-        linkedAppUser = directMatch;
-      } else {
+      if (!linkedAppUser) {
         const { data: fallbackUsers, error: fallbackError } = await supabase
           .from("app_user")
           .select("id, email")
@@ -157,10 +176,9 @@ export async function PATCH(req: Request, { params }: Props) {
       if (!linkedAppUser) {
         return NextResponse.json({ error: "Linked admin user not found" }, { status: 404 });
       }
-      const { error: appUserUpdateError } = await supabase
-        .from("app_user")
-        .update({ email: primaryContactEmail! })
-        .eq("id", linkedAppUser.id);
+      const appUserQuery = supabase.from("app_user");
+      // @ts-expect-error Supabase type inference issue
+      const { error: appUserUpdateError } = await appUserQuery.update({ email: primaryContactEmail! }).eq("id", linkedAppUser.id);
       if (appUserUpdateError) {
         console.error("Failed to sync app_user email:", appUserUpdateError);
         return NextResponse.json({ error: "Unable to update linked admin user" }, { status: 500 });
@@ -198,8 +216,10 @@ export async function PATCH(req: Request, { params }: Props) {
       console.error("Failed to load existing admins:", adminsError);
       return NextResponse.json({ error: "Unable to load current admin users" }, { status: 500 });
     }
-    const existingAdminMap = new Map((existingAdmins ?? []).map((admin) => [admin.id, admin]));
-    const emailSet = new Set((existingAdmins ?? []).map((admin) => admin.email.toLowerCase()));
+    type ExistingAdmin = { id: string; email: string };
+    const adminsList = (existingAdmins ?? []) as ExistingAdmin[];
+    const existingAdminMap = new Map(adminsList.map((admin) => [admin.id, admin]));
+    const emailSet = new Set(adminsList.map((admin) => admin.email.toLowerCase()));
     for (const admin of normalizedAdmins) {
       const emailLower = admin.email.toLowerCase();
       if (admin.id) {
@@ -230,10 +250,9 @@ export async function PATCH(req: Request, { params }: Props) {
             await rollbackAdminChanges();
             return NextResponse.json({ error: authUpdateError.message }, { status: 400 });
           }
-          const { error: appUserUpdateError } = await supabase
-            .from("app_user")
-            .update({ email: admin.email })
-            .eq("id", admin.id);
+          const appUserUpdateQuery = supabase.from("app_user");
+          // @ts-expect-error Supabase type inference issue
+          const { error: appUserUpdateError } = await appUserUpdateQuery.update({ email: admin.email }).eq("id", admin.id);
           if (appUserUpdateError) {
             console.error("Failed to update app_user email:", appUserUpdateError);
             await supabase.auth.admin.updateUserById(admin.id, {
@@ -283,7 +302,9 @@ export async function PATCH(req: Request, { params }: Props) {
           );
         }
         const authUserId = createdUser.user.id;
-        const { error: appUserInsertError } = await supabase.from("app_user").insert({
+        const appUserQuery = supabase.from("app_user");
+        // @ts-expect-error Supabase type inference issue
+        const { error: appUserInsertError } = await appUserQuery.insert({
           id: authUserId,
           email: admin.email,
           role: "ADMIN",
@@ -303,22 +324,18 @@ export async function PATCH(req: Request, { params }: Props) {
     }
   }
 
-  let updatedChurch = church;
+  let updatedChurch: ChurchRecord = church;
   if (Object.keys(updates).length > 0) {
-    const { data: churchData, error } = await supabase
-      .from("church")
-      .update(updates)
-      .eq("id", church.id)
-      .select()
-      .single();
+    const churchQuery = supabase.from("church");
+    // @ts-expect-error Supabase type inference issue
+    const { data: churchData, error } = await churchQuery.update(updates).eq("id", church.id).select().single();
     if (error) {
       console.error("Update error:", error);
       if (emailChanged && linkedAppUser) {
-        await supabase
-          .from("app_user")
-          .update({ email: linkedAppUser.email })
-          .eq("id", linkedAppUser.id)
-          .catch((revertAppUserError) => console.error("Failed to revert app_user email:", revertAppUserError));
+        const revertQuery = supabase.from("app_user");
+        // @ts-expect-error Supabase type inference issue
+        const { error: revertAppUserError } = await revertQuery.update({ email: linkedAppUser.email }).eq("id", linkedAppUser.id);
+        if (revertAppUserError) console.error("Failed to revert app_user email:", revertAppUserError);
       }
       if (hasAdminChanges) {
         await rollbackAdminChanges();

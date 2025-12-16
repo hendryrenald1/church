@@ -12,7 +12,7 @@ const familySchema = z.object({
 
 export async function GET() {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase.from("family").select("*").eq("church_id", session.churchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -21,27 +21,28 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await getSessionUser();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const payload = await req.json();
   const parsed = familySchema.safeParse(payload);
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const supabase = createSupabaseAdminClient();
-  const { data: family, error } = await supabase
-    .from("family")
-    .insert({
-      church_id: session.churchId,
-      family_name: parsed.data.familyName,
-      wedding_anniversary: parsed.data.weddingAnniversary,
-      address: parsed.data.address
-    })
-    .select("id")
-    .single();
+  const familyQuery = supabase.from("family");
+  // @ts-expect-error Supabase type inference issue
+  const { data: family, error } = await familyQuery.insert({
+    church_id: session.churchId,
+    family_name: parsed.data.familyName,
+    wedding_anniversary: parsed.data.weddingAnniversary,
+    address: parsed.data.address
+  }).select("id").single();
   if (error || !family) return NextResponse.json({ error: error?.message ?? "Failed" }, { status: 500 });
+  const familyData = family as { id: string };
 
   if (parsed.data.headMemberId) {
-    const { error: linkError } = await supabase.from("family_member").insert({
+    const familyMemberQuery = supabase.from("family_member");
+    // @ts-expect-error Supabase type inference issue
+    const { error: linkError } = await familyMemberQuery.insert({
       church_id: session.churchId,
-      family_id: family.id,
+      family_id: familyData.id,
       member_id: parsed.data.headMemberId,
       relationship: "HEAD",
       is_primary_contact: true
@@ -49,5 +50,5 @@ export async function POST(req: Request) {
     if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, familyId: family.id });
+  return NextResponse.json({ ok: true, familyId: familyData.id });
 }

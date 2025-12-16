@@ -5,6 +5,7 @@ import { GroupForm } from "@/components/groups/group-form";
 import { GroupMembersPanel } from "@/components/groups/group-members-panel";
 import { GroupAnnouncementsPanel } from "@/components/groups/group-announcements-panel";
 import { Card } from "@/components/ui/card";
+import type { Database } from "@/types/supabase";
 import { GroupDetail, BranchOption } from "../../groups/types";
 
 type Props = {
@@ -18,7 +19,10 @@ export default async function AdminGroupDetailPage({ params }: Props) {
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
-  const [{ data: group, error }, { data: branchesData, error: branchError }] = await Promise.all([
+  const [
+    { data: groupData, error },
+    { data: branchesData, error: branchError }
+  ] = await Promise.all([
     supabase
       .from("group")
       .select("id, name, type, description, branch:branch_id (id, name)")
@@ -32,11 +36,15 @@ export default async function AdminGroupDetailPage({ params }: Props) {
       .order("name", { ascending: true })
   ]);
 
-  if (error || branchError || !group) {
+  if (error || branchError || !groupData) {
     console.error("Failed to load group detail", error ?? branchError);
     notFound();
   }
 
+  type GroupRow = Database["public"]["Tables"]["group"]["Row"];
+  type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
+  type GroupRecord = GroupRow & { branch: Pick<BranchRow, "id" | "name"> | null };
+  const group = groupData as GroupRecord;
   const branches = (branchesData ?? []) as BranchOption[];
 
   return (

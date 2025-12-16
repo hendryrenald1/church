@@ -39,16 +39,17 @@ export async function GET(req: Request, { params }: Params) {
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const memberIdsInGroup =
-      (
-        await supabase
-          .from("group_member")
-          .select("member_id")
-          .eq("group_id", params.groupId)
-          .eq("church_id", session.churchId)
-      ).data?.map((row) => row.member_id) ?? [];
+    const groupMemberResult = await supabase
+      .from("group_member")
+      .select("member_id")
+      .eq("group_id", params.groupId)
+      .eq("church_id", session.churchId);
+    const groupMemberList = (groupMemberResult.data ?? []) as { member_id: string }[];
+    const memberIdsInGroup = groupMemberList.map((row) => row.member_id);
 
-    const filtered = (data ?? []).filter((member) => !memberIdsInGroup.includes(member.id));
+    type MemberRecord = { id: string; first_name: string; last_name: string; email: string | null; phone: string | null; date_of_birth: string | null; status: string; branch: { id: string; name: string } | null };
+    const memberData = (data ?? []) as MemberRecord[];
+    const filtered = memberData.filter((member) => !memberIdsInGroup.includes(member.id));
     return NextResponse.json(filtered);
   }
 

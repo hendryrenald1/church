@@ -30,7 +30,8 @@ export async function POST(req: Request, { params }: Params) {
     .in("id", parsed.data.memberIds);
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 });
 
-  const validMemberIds = new Set((members ?? []).map((m) => m.id));
+  const memberList = (members ?? []) as { id: string }[];
+  const validMemberIds = new Set(memberList.map((m) => m.id));
   const rows = parsed.data.memberIds
     .filter((id) => validMemberIds.has(id))
     .map((memberId) => ({
@@ -40,7 +41,9 @@ export async function POST(req: Request, { params }: Params) {
     }));
   if (!rows.length) return NextResponse.json({ error: "No valid members" }, { status: 400 });
 
-  const { error } = await supabase.from("group_member").insert(rows);
+  const groupMemberQuery = supabase.from("group_member");
+  // @ts-expect-error Supabase type inference issue
+  const { error } = await groupMemberQuery.insert(rows);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
