@@ -12,6 +12,7 @@ type Church = {
   plan: "FREE" | "STANDARD" | "PREMIUM";
   primary_contact_name?: string;
   primary_contact_email?: string;
+  admins?: { id: string; email: string }[];
 };
 
 export default function SuperAdminChurchDetailPage({ params }: Props) {
@@ -114,7 +115,18 @@ export default function SuperAdminChurchDetailPage({ params }: Props) {
 
         <div className="rounded-lg border p-4">
           <h2 className="text-lg font-semibold">Admin Users</h2>
-          <p className="text-sm text-muted-foreground">View/add admins for this church.</p>
+          {church.admins && church.admins.length > 0 ? (
+            <ul className="mt-2 space-y-1 text-sm">
+              {church.admins.map((admin) => (
+                <li key={admin.id} className="flex items-center justify-between rounded border px-3 py-2">
+                  <span>{admin.email}</span>
+                  <span className="text-xs text-muted-foreground">ID: {admin.id.slice(0, 8)}…</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-2">No admin users found.</p>
+          )}
         </div>
         <div className="rounded-lg border p-4">
           <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
@@ -124,4 +136,3 @@ export default function SuperAdminChurchDetailPage({ params }: Props) {
     </div>
   );
 }
-

@@ -8,9 +8,16 @@ const schema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/),
   primaryContactName: z.string().min(2),
   primaryContactEmail: z.string().email(),
-  password: z.string().min(8).optional(),
   plan: z.enum(["FREE", "STANDARD", "PREMIUM"]).optional(),
-  status: z.enum(["PENDING", "ACTIVE", "SUSPENDED"]).optional()
+  status: z.enum(["PENDING", "ACTIVE", "SUSPENDED"]).optional(),
+  adminUsers: z
+    .array(
+      z.object({
+        email: z.string().email(),
+        password: z.string().min(8)
+      })
+    )
+    .min(1)
 });
 
 export async function GET() {
@@ -49,6 +56,16 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    const normalizedAdminEmails = parsed.data.adminUsers.map((admin) => admin.email.toLowerCase());
+    const duplicateEmail = normalizedAdminEmails.find(
+      (email, index) => normalizedAdminEmails.indexOf(email) !== index
+    );
+    if (duplicateEmail) {
+      return NextResponse.json(
+        { error: `Duplicate admin email detected: ${duplicateEmail}` },
+        { status: 400 }
+      );
+    }
     const supabase = createSupabaseAdminClient();
     const { data: church, error } = await supabase.from("church").insert({
       name: parsed.data.name,
@@ -64,33 +81,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Optionally create an admin user if password is provided
-    if (parsed.data.password && church) {
-      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-        email: parsed.data.primaryContactEmail,
-        password: parsed.data.password,
-        email_confirm: true,
-        user_metadata: { role: "ADMIN", church_id: church.id, church_slug: parsed.data.slug }
-      });
-      
-      if (userError) {
-        console.error("Create user error:", userError);
-        return NextResponse.json({ error: `Church created but user creation failed: ${userError.message}` }, { status: 500 });
-      }
-      
-      if (userData.user) {
-        const { error: appUserError } = await supabase.from("app_user").insert({
-          id: userData.user.id,
-          email: parsed.data.primaryContactEmail,
-          role: "ADMIN",
-          church_id: church.id
-        });
-        
-        if (appUserError) {
-          console.error("Create app_user error:", appUserError);
-          // Don't fail the whole request, just log it
+    const createdAdminAccountIds: string[] = [];
+    const rollbackAdmins = async () => {
+      for (const adminId of createdAdminAccountIds) {
+        await supabase.from("app_user").delete().eq("id", adminId);
+        const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(adminId);
+        if (deleteAuthError) {
+          console.error("Failed to delete auth user during rollback:", deleteAuthError);
         }
       }
+      await supabase.from("church").delete().eq("id", church.id);
+    };
+
+    for (const adminUser of parsed.data.adminUsers) {
+      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+        email: adminUser.email,
+        password: adminUser.password,
+        email_confirm: true,
+        user_metadata: {
+          role: "ADMIN",
+          church_id: church.id,
+          church_slug: parsed.data.slug
+        }
+      });
+
+      if (userError || !userData?.user) {
+        console.error("Create admin user error:", userError);
+        await rollbackAdmins();
+        return NextResponse.json(
+          { error: userError?.message ?? "Failed to create admin user" },
+          { status: 500 }
+        );
+      }
+
+      const authUserId = userData.user.id;
+      const { error: appUserError } = await supabase.from("app_user").insert({
+        id: authUserId,
+        email: adminUser.email,
+        role: "ADMIN",
+        church_id: church.id
+      });
+
+      if (appUserError) {
+        console.error("Create app_user error:", appUserError);
+        await supabase.auth.admin.deleteUser(authUserId);
+        await rollbackAdmins();
+        return NextResponse.json(
+          { error: "Failed to sync admin user, church creation rolled back" },
+          { status: 500 }
+        );
+      }
+
+      createdAdminAccountIds.push(authUserId);
     }
 
     return NextResponse.json({ ok: true, church });
@@ -102,4 +144,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
