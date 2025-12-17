@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 function Hero() {
   const [titleNumber, setTitleNumber] = useState(0);
   const titles = useMemo(
-    () => ["multi-tenant", "secure", "member-first", "pastor-ready", "branch-aware"],
+    () => ["unified", "secure", "people-centered", "pastor-friendly", "multi-campus"],
     []
   );
 
@@ -26,11 +26,11 @@ function Hero() {
         <div className="flex flex-col items-center justify-center gap-8 py-20 text-center lg:py-32">
           <Button variant="secondary" size="sm" className="gap-2 rounded-full px-4 py-1.5">
             <Church className="h-4 w-4 text-primary" />
-            Multi-tenant Church OS
+            Church Management Made Simple
           </Button>
           <div className="flex flex-col gap-4">
             <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
-              Build a
+              Experience a
               <span className="relative ml-2 inline-flex min-w-[10ch] justify-center overflow-hidden">
                 {titles.map((title, index) => (
                   <motion.span
@@ -49,11 +49,11 @@ function Hero() {
                 ))}
                 <span className="opacity-0">{titles[0]}</span>
               </span>
-              church platform your pastors love.
+              church platform your team will love.
             </h1>
             <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-              Unite branches, pastors, admins, and members inside one Supabase-secured workspace. Track
-              families, assignments, and branch health while giving each role the tools they need.
+              Bring all your campuses, pastors, and members together in one place. Manage families,
+              track attendance, and empower your ministry leaders with the tools they need to serve effectively.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -64,7 +64,7 @@ function Hero() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/auth/login">Login to your hub</Link>
+              <Link href="/auth/login">Sign in to your account</Link>
             </Button>
           </div>
         </div>

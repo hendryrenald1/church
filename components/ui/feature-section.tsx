@@ -22,27 +22,27 @@ type Feature = {
 
 const features: Feature[] = [
   {
-    title: "Tenant isolation baked in",
-    description: "Every branch, member, and pastor carries churchId + slug enforcement backed by Supabase RLS.",
-    stat: "100% scoped queries",
+    title: "Your data stays private",
+    description: "Each church has its own secure space. Your member information is protected and only accessible to your authorized staff.",
+    stat: "Enterprise-grade security",
     icon: <ShieldCheck className="h-5 w-5" />
   },
   {
-    title: "Branch-aware workflows",
-    description: "Assign pastors to campuses and surface only their members with zero extra config.",
-    stat: "Auto scoped members",
+    title: "Multi-campus ready",
+    description: "Manage multiple locations effortlessly. Assign pastors to specific campuses and let them focus on their congregation.",
+    stat: "Unlimited branches",
     icon: <Building className="h-5 w-5" />
   },
   {
-    title: "Member-first families",
-    description: "Start with a member, spin up a family, and keep every household connection clear.",
-    stat: "2-click families",
+    title: "Family connections",
+    description: "Link members into family units, track relationships, and see the whole household at a glance.",
+    stat: "Easy family management",
     icon: <Users className="h-5 w-5" />
   },
   {
-    title: "Modern admin UX",
-    description: "Role-based dashboards plus hover-rich insights keep admins and pastors in flow.",
-    stat: "Shipped with shadcn",
+    title: "Designed for ministry",
+    description: "Clean, intuitive dashboards for administrators and pastors. Less time on admin, more time for what matters.",
+    stat: "Built for churches",
     icon: <Sparkle className="h-5 w-5" />
   }
 ];
@@ -54,18 +54,18 @@ export function FeatureSection() {
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16 md:flex-row">
       <div className="flex max-w-xl flex-col gap-6">
-        <p className="text-sm font-semibold uppercase tracking-wide text-primary">Why churches switch</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-primary">Why churches choose us</p>
         <h2 className="text-3xl font-semibold md:text-4xl">
-          Hover through the features powering modern, multi-campus church management.
+          Everything you need to manage your church, all in one place.
         </h2>
         <p className="text-muted-foreground">
-          Built with Next.js, Supabase, and shadcn/ui, every workflow respects roles (Super Admin, Admin, Pastor)
-          and enforces tenant security by design. Hover a tile to see how each capability helps your team scale.
+          Whether you have one campus or many, our platform gives administrators and pastors the right tools
+          for their role. Hover over each feature to learn how we can help your ministry grow.
         </p>
         <div className="rounded-2xl border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-3 text-primary">
             <Layers3 className="h-5 w-5" />
-            <span className="text-sm font-semibold uppercase tracking-wider">Highlighted benefit</span>
+            <span className="text-sm font-semibold uppercase tracking-wider">Feature spotlight</span>
           </div>
           <h3 className="mt-4 text-2xl font-semibold">{activeFeature.title}</h3>
           <p className="mt-2 text-sm text-muted-foreground">{activeFeature.description}</p>
@@ -76,12 +76,12 @@ export function FeatureSection() {
         <div className="flex flex-wrap gap-3">
           <Button asChild>
             <Link href="/auth/register-church" className="gap-2">
-              Start in minutes
+              Get started free
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/auth/login">Already onboard? Login</Link>
+            <Link href="/auth/login">Already have an account? Sign in</Link>
           </Button>
         </div>
       </div>
