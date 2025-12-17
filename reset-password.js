@@ -18,7 +18,7 @@ function requireEnv(userId) {
   return value;
 }
 
-async function sendReset(email) {
+async function sendReset(value) {
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
   const supabase = createClient(url, serviceRoleKey);
