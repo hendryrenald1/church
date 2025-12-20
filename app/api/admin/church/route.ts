@@ -5,9 +5,13 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/sup
 export async function GET() {
   const session = await getSessionUser();
   if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.from("church").select("*").eq("id", session.churchId).single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("church")
+    .select("*")
+    .eq("id", session.churchId)
+    .single() as { data: Record<string, unknown> | null; error: unknown };
+  if (error || !data) return NextResponse.json({ error: "Church not found" }, { status: 404 });
   return NextResponse.json(data);
 }
 

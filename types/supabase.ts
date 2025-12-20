@@ -165,6 +165,19 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["group_announcement"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["group_announcement"]["Row"]>;
       };
+      activity_log: {
+        Row: {
+          id: string;
+          church_id: string;
+          activity_type: string | null;
+          title: string;
+          description: string | null;
+          user_id: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["activity_log"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["activity_log"]["Row"]>;
+      };
     };
   };
 }

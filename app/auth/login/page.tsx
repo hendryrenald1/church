@@ -29,16 +29,56 @@ export default function LoginPage() {
     const appMetadata = (data.user.app_metadata ?? {}) as Record<string, unknown>;
     const userMetadata = (data.user.user_metadata ?? {}) as Record<string, unknown>;
     const role = (userMetadata.role as string | undefined) ?? (appMetadata.role as string | undefined);
-    const churchSlug =
-      (userMetadata.church_slug as string | undefined) ?? (appMetadata.church_slug as string | undefined);
+    const churchId =
+      (userMetadata.church_id as string | undefined) ?? (appMetadata.church_id as string | undefined);
+
+    // Check church status for ADMIN and PASTOR roles
+    if ((role === "ADMIN" || role === "PASTOR") && churchId) {
+      try {
+        const res = await fetch("/api/auth/check-church-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ churchId })
+        });
+
+        if (!res.ok) {
+          await supabase.auth.signOut();
+          setError("Unable to verify church status. Please contact support.");
+          return;
+        }
+
+        const { status: churchStatus, slug: churchSlug } = await res.json();
+
+        if (churchStatus !== "ACTIVE") {
+          await supabase.auth.signOut();
+          if (churchStatus === "SUSPENDED") {
+            setError("Your church account has been suspended. Please contact the administrator for assistance.");
+          } else if (churchStatus === "PENDING") {
+            setError("Your church account is pending approval. Please wait for activation or contact the administrator.");
+          } else {
+            setError("Your church account is not active. Please contact the administrator.");
+          }
+          return;
+        }
+
+        // Use the correct slug from the database for redirection
+        if (role === "ADMIN") {
+          router.push(`/${churchSlug}/admin/dashboard`);
+        } else if (role === "PASTOR") {
+          router.push(`/${churchSlug}/pastor/dashboard`);
+        }
+        return;
+      } catch {
+        await supabase.auth.signOut();
+        setError("Unable to verify church status. Please contact support.");
+        return;
+      }
+    }
+
     if (role === "SUPER_ADMIN") {
       router.push("/superadmin/dashboard");
-    } else if (role === "ADMIN" && churchSlug) {
-      router.push(`/${churchSlug}/admin/dashboard`);
-    } else if (role === "PASTOR" && churchSlug) {
-      router.push(`/${churchSlug}/pastor/dashboard`);
     } else {
-      // fallback if slug is missing
+      // fallback if churchId is missing
       router.push("/");
     }
   };
