@@ -2,6 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FamilySearchBar } from "./_components/family-search-bar";
 
 type FamilyRow = {
   id: string;
@@ -12,7 +16,13 @@ type FamilyRow = {
   }[];
 };
 
-export default async function AdminFamiliesPage({ params }: { params: { churchSlug: string } }) {
+export default async function AdminFamiliesPage({
+  params,
+  searchParams
+}: {
+  params: { churchSlug: string };
+  searchParams?: { search?: string };
+}) {
   const session = await getSessionUser();
   if (!session) redirect("/auth/login");
   if (session.role !== "ADMIN" || !session.churchId) notFound();
@@ -30,59 +40,74 @@ export default async function AdminFamiliesPage({ params }: { params: { churchSl
     throw new Error("Failed to load families");
   }
 
-  const families = (data ?? []) as FamilyRow[];
+  const searchTerm = (searchParams?.search ?? "").trim().toLowerCase();
+  const families = ((data ?? []) as FamilyRow[]).filter((family) => {
+    if (!searchTerm) return true;
+    const familyName = (family.family_name ?? "").toLowerCase();
+    const memberNames = family.family_member
+      .map((m) => `${m.member?.first_name ?? ""} ${m.member?.last_name ?? ""}`.toLowerCase())
+      .join(" ");
+    return familyName.includes(searchTerm) || memberNames.includes(searchTerm);
+  });
   const base = `/${params.churchSlug}/admin/families`;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Families</h1>
-          <p className="text-sm text-muted-foreground">
-            Member-first flow. Families are created from member profiles.
-          </p>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+          <div>
+            <h1 className="text-2xl font-semibold">Families</h1>
+            <p className="text-sm text-muted-foreground">Browse and manage family records.</p>
+          </div>
+          <Link href={`${base}/new`} className="rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90">
+            Add family
+          </Link>
         </div>
-        <Link href={`${base}/new`} className="rounded-lg bg-primary px-4 py-2 text-primary-foreground">
-          Add family
-        </Link>
+        <FamilySearchBar />
       </div>
-      <div className="overflow-hidden rounded-lg border">
-        <table className="min-w-full divide-y text-sm">
-          <thead className="bg-secondary/50">
-            <tr>
-              {["Family", "Head", "Children", "Actions"].map((h) => (
-                <th key={h} className="px-4 py-2 text-left font-medium text-muted-foreground">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="hidden bg-secondary/50 px-4 py-2 text-sm font-medium text-muted-foreground sm:grid sm:grid-cols-[2fr_1.5fr_1fr_auto]">
+            <span>Family</span>
+            <span>Head</span>
+            <span>Members</span>
+            <span className="text-right">Actions</span>
+          </div>
+
+          <div className="divide-y">
             {families.map((family) => {
               const head = family.family_member.find((m) => m.relationship === "HEAD");
-              const headName = head?.member
-                ? `${head.member.first_name} ${head.member.last_name}`
-                : "—";
-              const children = family.family_member.filter((m) => m.relationship === "CHILD").length;
+              const headName = head?.member ? `${head.member.first_name} ${head.member.last_name}` : "—";
+              const memberCount = family.family_member.length;
               return (
-                <tr key={family.id} className="hover:bg-muted/40">
-                  <td className="px-4 py-2">{family.family_name ?? "Unnamed Family"}</td>
-                  <td className="px-4 py-2">{headName}</td>
-                  <td className="px-4 py-2">{children}</td>
-                  <td className="px-4 py-2">
-                    <Link href={`${base}/${family.id}`} className="text-primary underline">
-                      View
-                    </Link>
-                  </td>
-                </tr>
+                <div
+                  key={family.id}
+                  className="grid grid-cols-1 gap-2 px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:grid-cols-[2fr_1.5fr_1fr_auto] sm:items-center"
+                >
+                  <div className="flex items-center justify-between sm:block">
+                    <div className="font-medium">{family.family_name ?? "Unnamed Family"}</div>
+                    <Badge variant="secondary" className="mt-1 text-xs sm:hidden">
+                      {memberCount} members
+                    </Badge>
+                  </div>
+                  <div className="text-muted-foreground">{headName}</div>
+                  <div className="hidden sm:block text-muted-foreground">{memberCount}</div>
+                  <div className="flex justify-end">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`${base}/${family.id}`}>View</Link>
+                    </Button>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-        {families.length === 0 && (
-          <div className="p-6 text-sm text-muted-foreground">No families yet.</div>
-        )}
-      </div>
+          </div>
+
+          {families.length === 0 && (
+            <div className="p-6 text-sm text-muted-foreground">No families match your search.</div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
