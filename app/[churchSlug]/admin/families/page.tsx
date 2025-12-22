@@ -56,8 +56,8 @@ export default async function AdminFamiliesPage({
       <div className="flex flex-col gap-2">
         <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-2xl font-semibold">Families</h1>
-            <p className="text-sm text-muted-foreground">Browse and manage family records.</p>
+            <h1 className="text-2xl font-semibold">Church Families</h1>
+            <p className="text-sm text-muted-foreground">View families and household relationships within your church community.</p>
           </div>
           <Link href={`${base}/new`} className="rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90">
             Add family

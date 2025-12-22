@@ -15,9 +15,9 @@ export default async function AdminMembersPage({ params }: { params: { churchSlu
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Members</h1>
+          <h1 className="text-2xl font-semibold">Church Members</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your church members with search and filters.
+          Find, connect with, and support members of your church community.
           </p>
         </div>
         <Link
