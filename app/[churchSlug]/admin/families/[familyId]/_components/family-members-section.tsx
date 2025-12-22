@@ -92,7 +92,7 @@ export function FamilyMembersSection({ family, churchSlug }: FamilyMembersSectio
     if (!memberToRemove) return;
     startTransition(async () => {
       try {
-        const response = await fetch(`/api/admin/families/${family.id}/members/${memberToRemove.id}`, { method: "DELETE" });
+        const response = await fetch(`/api/admin/families/members/${memberToRemove.id}`, { method: "DELETE" });
         if (!response.ok) throw new Error("Request failed");
         toast({ title: "Member removed from family" });
         setMemberToRemove(null);
@@ -339,10 +339,19 @@ function AddFamilyMemberDialog({
   const [isPrimaryContact, setIsPrimaryContact] = useState(false);
   const [options, setOptions] = useState<MemberOption[]>([]);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+
+  // Debounce the search query to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     let active = true;
@@ -350,13 +359,28 @@ function AddFamilyMemberDialog({
     const loadMembers = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/admin/members?exclude=${existingMemberIds.join(",")}`, {
+        const params = new URLSearchParams();
+        if (existingMemberIds.length > 0) {
+          params.set("exclude", existingMemberIds.join(","));
+        }
+        if (debouncedQuery) {
+          params.set("search", debouncedQuery);
+        }
+        params.set("limit", "50");
+        const response = await fetch(`/api/admin/members?${params.toString()}`, {
           signal: controller.signal
         });
         if (!response.ok) throw new Error("Request failed");
         const data = await response.json();
         if (!active) return;
-        setOptions(data.members ?? []);
+        setOptions(
+          (data.data ?? []).map((m: { id: string; first_name: string; last_name: string; email: string | null }) => ({
+            id: m.id,
+            firstName: m.first_name,
+            lastName: m.last_name,
+            email: m.email
+          }))
+        );
       } catch (error) {
         if (!controller.signal.aborted) {
           console.error(error);
@@ -370,20 +394,15 @@ function AddFamilyMemberDialog({
       active = false;
       controller.abort();
     };
-  }, [existingMemberIds]);
+  }, [existingMemberIds, debouncedQuery]);
 
   const selectedMember = useMemo(() => options.find((option) => option.id === selectedMemberId) ?? null, [options, selectedMemberId]);
-
-  const filteredOptions = useMemo(() => {
-    if (!query) return options;
-    return options.filter((option) => `${option.firstName} ${option.lastName}`.toLowerCase().includes(query.toLowerCase()));
-  }, [options, query]);
 
   const handleAddExisting = () => {
     if (!selectedMemberId) return;
     startTransition(async () => {
       try {
-        const response = await fetch(`/api/admin/families/${familyId}/members`, {
+        const response = await fetch(`/api/admin/families/${familyId}/add-member`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ memberId: selectedMemberId, relationship, isPrimaryContact })
@@ -444,7 +463,7 @@ function AddFamilyMemberDialog({
                   <CommandList>
                     <CommandEmpty>{loading ? "Loading members..." : "No members found."}</CommandEmpty>
                     <CommandGroup>
-                      {filteredOptions.map((option) => (
+                      {options.map((option) => (
                         <CommandItem
                           key={option.id}
                           value={`${option.firstName} ${option.lastName}`}
@@ -483,7 +502,7 @@ function AddFamilyMemberDialog({
                     });
                     if (!response.ok) throw new Error("Failed to create member");
                     const result = await response.json();
-                    await fetch(`/api/admin/families/${familyId}/members`, {
+                    await fetch(`/api/admin/families/${familyId}/add-member`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ memberId: result.member.id, relationship, isPrimaryContact })

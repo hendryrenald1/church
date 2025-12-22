@@ -45,11 +45,28 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
     throw new Error("Failed to load dashboard data");
   }
 
-  const members = membersRes.data ?? [];
-  const families = familiesRes.data ?? [];
-  const branches = branchesRes.data ?? [];
-  const pastors = pastorsRes.data ?? [];
-  const pastorBranches = pastorBranchesRes.data ?? [];
+  type MemberSelect = {
+    id: string;
+    first_name: string;
+    last_name: string;
+    status: "ACTIVE" | "INACTIVE";
+    email: string | null;
+    phone: string | null;
+    branch_id: string | null;
+    date_of_birth: string | null;
+    baptism_date: string | null;
+    created_at: string;
+  };
+  type FamilySelect = { id: string; family_name: string | null; wedding_anniversary: string | null; created_at: string };
+  type BranchSelect = { id: string; name: string; city: string; is_active: boolean; created_at: string };
+  type PastorSelect = { id: string; created_at: string };
+  type PastorBranchSelect = { id: string; branch_id: string };
+
+  const members = (membersRes.data ?? []) as MemberSelect[];
+  const families = (familiesRes.data ?? []) as FamilySelect[];
+  const branches = (branchesRes.data ?? []) as BranchSelect[];
+  const pastors = (pastorsRes.data ?? []) as PastorSelect[];
+  const pastorBranches = (pastorBranchesRes.data ?? []) as PastorBranchSelect[];
 
   const today = startOfDay(new Date());
   const birthdaysNextWeek = getUpcomingBirthdays(members, today, 7);
@@ -58,7 +75,8 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
   const baptismsThisMonth = getBaptismsBetween(members, today, endOfMonth(today));
   const baptismsNextWeek = baptismsThisMonth.filter((baptism) => differenceInCalendarDays(baptism.date, today) <= 7);
 
-  const churchName = churchRes.data?.name ?? params.churchSlug;
+  const churchData = churchRes.data as { name: string } | null;
+  const churchName = churchData?.name ?? params.churchSlug;
   const metadata = session.user.user_metadata as Record<string, unknown>;
   const adminName =
     (typeof metadata?.["full_name"] === "string" ? (metadata["full_name"] as string) : undefined) ??
@@ -165,7 +183,7 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
   );
 }
 
-function buildMemberBreakdown(members: MemberRow[]) {
+function buildMemberBreakdown(members: { status: "ACTIVE" | "INACTIVE" }[]) {
   const active = members.filter((member) => member.status === "ACTIVE").length;
   const inactive = members.length - active;
   return `${active} active, ${inactive} inactive`;
@@ -201,28 +219,30 @@ function summarizeTrend(data: number[]) {
   return { trend: trendValue, trendUp };
 }
 
-interface UpcomingMemberEvent {
+interface UpcomingMemberEvent<T extends { id: string } = { id: string }> {
   id: string;
   name: string;
   date: Date;
-  member: MemberRow;
+  member: T;
 }
 
-interface UpcomingAnniversary {
+interface UpcomingAnniversary<T extends { id: string } = { id: string }> {
   id: string;
   familyName: string;
   date: Date;
-  family: FamilyRow;
+  family: T;
 }
 
-interface UpcomingBaptism {
+interface UpcomingBaptism<T extends { id: string } = { id: string }> {
   id: string;
   name: string;
   date: Date;
-  member: MemberRow;
+  member: T;
 }
 
-function getUpcomingBirthdays(members: MemberRow[], reference: Date, daysAhead: number): UpcomingMemberEvent[] {
+type MemberWithBirthday = Pick<MemberRow, "id" | "first_name" | "last_name" | "date_of_birth">;
+
+function getUpcomingBirthdays<T extends MemberWithBirthday>(members: T[], reference: Date, daysAhead: number) {
   return members
     .map((member) => {
       const nextDate = getNextOccurrence(member.date_of_birth, reference);
@@ -236,11 +256,13 @@ function getUpcomingBirthdays(members: MemberRow[], reference: Date, daysAhead: 
         member
       };
     })
-    .filter((entry): entry is UpcomingMemberEvent => Boolean(entry))
+    .filter((entry): entry is { id: string; name: string; date: Date; member: T } => Boolean(entry))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
-function getUpcomingAnniversaries(families: FamilyRow[], reference: Date, daysAhead: number): UpcomingAnniversary[] {
+type FamilyWithAnniversary = Pick<FamilyRow, "id" | "family_name" | "wedding_anniversary">;
+
+function getUpcomingAnniversaries<T extends FamilyWithAnniversary>(families: T[], reference: Date, daysAhead: number) {
   return families
     .map((family) => {
       const nextDate = getNextOccurrence(family.wedding_anniversary, reference);
@@ -254,11 +276,13 @@ function getUpcomingAnniversaries(families: FamilyRow[], reference: Date, daysAh
         family
       };
     })
-    .filter((entry): entry is UpcomingAnniversary => Boolean(entry))
+    .filter((entry): entry is { id: string; familyName: string; date: Date; family: T } => Boolean(entry))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
-function getBaptismsBetween(members: MemberRow[], start: Date, end: Date): UpcomingBaptism[] {
+type MemberWithBaptism = Pick<MemberRow, "id" | "first_name" | "last_name" | "baptism_date">;
+
+function getBaptismsBetween<T extends MemberWithBaptism>(members: T[], start: Date, end: Date) {
   return members
     .map((member) => {
       if (!member.baptism_date) return null;
@@ -272,7 +296,7 @@ function getBaptismsBetween(members: MemberRow[], start: Date, end: Date): Upcom
         member
       };
     })
-    .filter((entry): entry is UpcomingBaptism => Boolean(entry))
+    .filter((entry): entry is { id: string; name: string; date: Date; member: T } => Boolean(entry))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
@@ -302,9 +326,9 @@ function buildActionItems({
 }: {
   birthdays: UpcomingMemberEvent[];
   anniversaries: UpcomingAnniversary[];
-  missingContacts: MemberRow[];
+  missingContacts: { id: string }[];
   upcomingBaptisms: UpcomingBaptism[];
-  inactiveMembers: MemberRow[];
+  inactiveMembers: { id: string }[];
   basePath: string;
 }): ActionItem[] {
   const nextBirthday = birthdays[0];
@@ -470,9 +494,9 @@ function buildUpcomingEvents({
 }
 
 function buildBranchSnapshots(
-  branches: BranchRow[],
-  members: MemberRow[],
-  pastorBranches: PastorBranchRow[],
+  branches: { id: string; name: string; city: string; is_active: boolean }[],
+  members: { branch_id: string | null }[],
+  pastorBranches: { branch_id: string }[],
   basePath: string
 ): BranchSnapshot[] {
   const activeBranches = branches.filter((branch) => branch.is_active);
@@ -490,7 +514,11 @@ function buildBranchSnapshots(
   });
 }
 
-function buildQuickStats(members: MemberRow[], families: FamilyRow[], reference: Date): QuickStats {
+function buildQuickStats(
+  members: { date_of_birth: string | null; baptism_date: string | null; email: string | null; phone: string | null }[],
+  families: { wedding_anniversary: string | null }[],
+  reference: Date
+): QuickStats {
   const birthdaysThisMonth = members.filter((member) => occursThisMonth(member.date_of_birth, reference)).length;
   const anniversariesThisMonth = families.filter((family) => occursThisMonth(family.wedding_anniversary, reference)).length;
   const baptismsYTD = members.filter((member) => {

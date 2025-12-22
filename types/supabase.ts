@@ -169,10 +169,13 @@ export interface Database {
         Row: {
           id: string;
           church_id: string;
-          activity_type: string | null;
+          user_id: string | null;
+          entity_type: string;
+          entity_id: string;
+          activity_type: string;
           title: string;
           description: string | null;
-          user_id: string | null;
+          metadata: Record<string, unknown>;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["activity_log"]["Row"]>;

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Edit, MoreVertical, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -75,11 +75,6 @@ export function FamilyHeader({ family, churchSlug }: FamilyHeaderProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => router.push(`/${churchSlug}/admin/families/${family.id}/edit`)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Family
-          </Button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon">

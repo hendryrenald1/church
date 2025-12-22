@@ -99,6 +99,23 @@ create table family_member (
   unique (family_id, member_id)
 );
 
+create table activity_log (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references church(id) on delete cascade,
+  user_id uuid references app_user(id) on delete set null,
+  entity_type text not null,
+  entity_id uuid not null,
+  activity_type text not null,
+  title text not null,
+  description text,
+  metadata jsonb default '{}',
+  created_at timestamptz not null default now()
+);
+
+create index activity_log_church_id_idx on activity_log(church_id);
+create index activity_log_entity_idx on activity_log(entity_type, entity_id);
+create index activity_log_created_at_idx on activity_log(created_at desc);
+
 -- Enable RLS
 alter table church enable row level security;
 alter table app_user enable row level security;
@@ -108,13 +125,14 @@ alter table pastor_profile enable row level security;
 alter table pastor_branch enable row level security;
 alter table family enable row level security;
 alter table family_member enable row level security;
+alter table activity_log enable row level security;
 
 -- Policies
 create policy "sa all churches" on church for all using (auth.jwt() ->> 'role' = 'SUPER_ADMIN');
 create policy "church select self" on church for select using (id = (auth.jwt() ->> 'church_id')::uuid);
 
 do $$ declare t text; begin
-  for t in select unnest(array['branch','member','pastor_profile','pastor_branch','family','family_member'])
+  for t in select unnest(array['branch','member','pastor_profile','pastor_branch','family','family_member','activity_log'])
   loop
     execute format($p$
       create policy "sa all %1$s" on %1$s

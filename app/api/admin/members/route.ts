@@ -30,6 +30,7 @@ const memberSchema = z.object({
  * - search: Search term for name, email, or phone (optional)
  * - status: Filter by ACTIVE or INACTIVE (optional)
  * - branchId: Filter by branch UUID (optional)
+ * - exclude: Comma-separated list of member IDs to exclude (optional)
  *
  * Returns: { data: MemberListItem[], nextCursor: string | null, hasMore: boolean, totalCount: number }
  */
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search")?.trim() || "";
   const status = searchParams.get("status") as "ACTIVE" | "INACTIVE" | null;
   const branchId = searchParams.get("branchId");
+  const exclude = searchParams.get("exclude");
 
   // Parse and validate limit
   const limit = Math.min(
@@ -76,6 +78,14 @@ export async function GET(req: NextRequest) {
   // Apply branch filter
   if (branchId) {
     query = query.eq("branch_id", branchId);
+  }
+
+  // Exclude specific member IDs (used when adding members to families)
+  if (exclude) {
+    const excludeIds = exclude.split(",").filter(Boolean);
+    if (excludeIds.length > 0) {
+      query = query.not("id", "in", `(${excludeIds.join(",")})`);
+    }
   }
 
   // Order by last_name, first_name, then id for consistent cursor pagination

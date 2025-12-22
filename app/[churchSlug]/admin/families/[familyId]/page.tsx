@@ -65,7 +65,7 @@ export default async function AdminFamilyDetailPage({
 }) {
   const session = await getSessionUser();
   if (!session) redirect("/auth/login");
-  if (!session.churchId || !["ADMIN", "PASTOR"].includes(session.role)) notFound();
+  if (!session.churchId || !session.role || !["ADMIN", "PASTOR"].includes(session.role)) notFound();
   if (session.churchSlug && session.churchSlug !== params.churchSlug) notFound();
 
   const supabase = createSupabaseAdminClient();
@@ -185,16 +185,20 @@ async function getFamilyActivities(familyId: string, churchId: string): Promise<
     .from("activity_log")
     .select("id, activity_type, title, description, created_at")
     .eq("church_id", churchId)
-    .like("description", `%${familyId}%`)
+    .eq("entity_type", "family")
+    .eq("entity_id", familyId)
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(10);
 
   if (error) {
     console.warn("Family activity lookup failed", error);
     return [];
   }
 
-  return (data ?? []).map((item) => ({
+  type ActivityRow = { id: string; activity_type: string; title: string; description: string | null; created_at: string };
+  const items = (data ?? []) as ActivityRow[];
+
+  return items.map((item) => ({
     id: item.id,
     title: item.title,
     description: item.description ?? "No description",
