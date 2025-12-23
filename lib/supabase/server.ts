@@ -7,16 +7,21 @@ import type { Database } from "@/types/supabase";
 export function createSupabaseServerClient() {
   const cookieStore = cookies();
   type CookieOptions = Omit<Parameters<(typeof cookieStore)["set"]>[0], "name" | "value">;
+  const safeSet = (name: string, value: string, options?: CookieOptions) => {
+    try {
+      cookieStore.set({ name, value, ...(options ?? {}) });
+    } catch {
+      // In Server Components, setting cookies can throw; ignore writes since we only need read access here.
+    }
+  };
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get: (name: string) => cookieStore.get(name)?.value,
-        set: (name: string, value: string, options?: CookieOptions) =>
-          cookieStore.set({ name, value, ...(options ?? {}) }),
-        remove: (name: string, options?: CookieOptions) =>
-          cookieStore.set({ name, value: "", ...(options ?? {}) })
+        set: safeSet,
+        remove: (name: string, options?: CookieOptions) => safeSet(name, "", options)
       },
       global: {
         headers: {

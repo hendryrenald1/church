@@ -49,10 +49,10 @@ export default function AdminLayout({
         />
         <main className="flex-1 pb-20 md:pb-0">
           <div className="sticky top-0 z-30 border-b bg-background/90 px-4 py-4 backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Managing</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Administrating</p>
             <p className="text-2xl font-semibold">{churchName}</p>
           </div>
-          <div className="mx-auto w-full max-w-6xl px-4 py-8">{children}</div>
+      <div className="mx-auto w-full max-w-6xl px-4 py-1 sm:py-8">{children}</div>
         </main>
       </div>
       <AdminBottomNav churchSlug={churchSlug} currentPath={pathname} className="md:hidden" />

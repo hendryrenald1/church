@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export interface StatCardProps {
   icon: LucideIcon;
   label: string;
-  value: number;
+  value: number | string;
   trend?: string | null;
   trendUp?: boolean;
   color: string;
@@ -30,10 +30,13 @@ export function StatCard({
   badge
 }: StatCardProps) {
   const sparklinePath = buildSparklinePath(sparklineData);
-  const cardContent = (
+  const formattedValue = typeof value === "number" ? value.toLocaleString() : String(value);
+  const textColor = color.includes("bg-") ? color.replace("bg-", "text-") : color;
+
+  const desktopCard = (
     <Card
       className={cn(
-        "group relative overflow-hidden border bg-card/95 transition-all duration-200 ease-in-out hover:shadow-xl",
+        "group relative hidden overflow-hidden border bg-card/95 transition-all duration-200 ease-in-out hover:shadow-xl md:block",
         href ? "hover:-translate-y-1 cursor-pointer" : "",
         "stat-card"
       )}
@@ -43,7 +46,7 @@ export function StatCard({
           <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-semibold">{value.toLocaleString()}</p>
+              <p className="text-3xl font-semibold">{formattedValue}</p>
               {badge ? (
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{badge}</span>
               ) : null}
@@ -90,12 +93,43 @@ export function StatCard({
     </Card>
   );
 
-  return href ? (
-    <Link href={href} className="block">
-      {cardContent}
-    </Link>
-  ) : (
-    cardContent
+  const mobileCard = (
+    <Card
+      className={cn(
+        "md:hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md",
+        href ? "cursor-pointer" : ""
+      )}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-inner", color)}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="leading-tight">
+          <div className={cn("text-lg font-semibold", textColor)}>{formattedValue}</div>
+          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+        </div>
+      </div>
+    </Card>
+  );
+
+  if (href) {
+    return (
+      <>
+        <Link href={href} className="block md:hidden">
+          {mobileCard}
+        </Link>
+        <Link href={href} className="hidden md:block">
+          {desktopCard}
+        </Link>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {mobileCard}
+      {desktopCard}
+    </>
   );
 }
 

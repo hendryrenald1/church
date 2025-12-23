@@ -1,5 +1,6 @@
 import { addDays, differenceInCalendarDays, differenceInDays, differenceInHours, differenceInMinutes, endOfMonth, format, isSameMonth, startOfDay } from "date-fns";
-import { AlertTriangle, Building, Cake, Droplet, Edit, Heart, Home, List, Settings, UserCheck, UserPlus, UserX, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, Building, Cake, Droplet, Edit, Heart, Home, List, Settings, UserCheck, UserPlus, UserX, Users } from "lucide-react";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ActionItemsSection, type ActionItem } from "./_components/action-items-section";
 import { BranchOverviewWidget, type BranchSnapshot } from "./_components/branch-overview-widget";
@@ -10,6 +11,7 @@ import { StatCard } from "./_components/stat-card";
 import { UpcomingEventsWidget, type UpcomingEvent } from "./_components/upcoming-events-widget";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import type { Database } from "@/types/supabase";
 
 type MemberRow = Database["public"]["Tables"]["member"]["Row"];
@@ -90,6 +92,13 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
   const memberSparkline = buildMonthlySparkline(members);
   const familySparkline = buildMonthlySparkline(families);
 
+  const mobileStatRow = [
+    { label: "Members", value: members.length, color: "text-blue-600" },
+    { label: "Families", value: families.length, color: "text-orange-500" },
+    { label: "Pastors", value: pastors.length, color: "text-purple-600" },
+    { label: "Branches", value: branches.length, color: "text-green-600" }
+  ] as const;
+
   const statCards = [
     {
       icon: Building,
@@ -149,15 +158,39 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
   const branchSnapshots = buildBranchSnapshots(branches, members, pastorBranches, basePath);
   const quickStats = buildQuickStats(members, families, today);
   const recentActivities = await getRecentActivities(supabase, churchId);
+  const primaryQuickActions = quickActions.filter((action) =>
+    ["add-member", "add-branch", "add-pastor"].includes(action.id)
+  );
 
   return (
-    <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="space-y-5 px-3 pt-2 pb-4 sm:space-y-6 sm:px-6 sm:pt-4 lg:px-8">
       <div>
-        <h1 className="text-3xl font-bold">Welcome back, {adminName}! 👋</h1>
-        <p className="text-muted-foreground">Here&apos;s what&apos;s happening at {churchName} today.</p>
+        <h1 className="text-sm font-bold sm:text-3xl">Welcome back, {adminName}! </h1>
+        <p className="text-sm text-muted-foreground sm:text-base">Here&apos;s what&apos;s happening at {churchName} today.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="md:hidden rounded-2xl border bg-white p-3 shadow-sm">
+        <div className="grid grid-cols-4 gap-0.5 text-center">
+          {mobileStatRow.map((stat, idx) => (
+            <div
+              key={stat.label}
+              className={cn(
+                "flex flex-col items-center justify-center px-1",
+                idx !== 0 && "border-l border-muted-foreground/20"
+              )}
+            >
+              <span className={cn("text-lg font-semibold leading-tight sm:text-sm", stat.color)}>
+                {stat.value.toLocaleString()}
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[9px]">
+                {stat.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="hidden grid-cols-1 gap-4 md:grid md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
           <StatCard key={card.label} {...card} />
         ))}
@@ -165,8 +198,77 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <ActionItemsSection items={actionItems} />
-          <QuickActionsGrid actions={quickActions} />
+          <div className="space-y-2.5 md:hidden">
+            {actionItems.map((item) => {
+              const variant = item.variant ?? "default";
+              const styleMap = {
+                default: {
+                  container: "bg-slate-50 border-slate-100",
+                  icon: "bg-slate-100 text-slate-600",
+                  text: "text-slate-800",
+                  subtext: "text-slate-500"
+                },
+                success: {
+                  container: "bg-emerald-50 border-emerald-100",
+                  icon: "bg-emerald-100 text-emerald-600",
+                  text: "text-emerald-800",
+                  subtext: "text-emerald-600"
+                },
+                warning: {
+                  container: "bg-amber-50 border-amber-100",
+                  icon: "bg-amber-100 text-amber-600",
+                  text: "text-amber-800",
+                  subtext: "text-amber-600"
+                },
+                destructive: {
+                  container: "bg-rose-50 border-rose-100",
+                  icon: "bg-rose-100 text-rose-600",
+                  text: "text-rose-800",
+                  subtext: "text-rose-600"
+                }
+              } as const;
+              const styles = styleMap[variant];
+              const subtext =
+                variant === "warning"
+                  ? "Action required"
+                  : variant === "destructive"
+                    ? "Needs follow-up"
+                    : variant === "success"
+                      ? "Looking good"
+                      : null;
+
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-2xl border px-3 py-3 shadow-sm transition hover:shadow-md",
+                    styles.container
+                  )}
+                >
+                  <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", styles.icon)}>
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className={cn("text-[13px] font-semibold leading-tight", styles.text)}>{item.message}</p>
+                    {subtext ? <p className={cn("text-[11px]", styles.subtext)}>{subtext}</p> : null}
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block">
+            <ActionItemsSection items={actionItems} />
+          </div>
+
+          <div className="md:hidden">
+            <QuickActionsGrid actions={primaryQuickActions} compactLayout />
+          </div>
+          <div className="hidden md:block">
+            <QuickActionsGrid actions={quickActions} />
+          </div>
           <RecentActivityTimeline activities={recentActivities} viewAllHref={`${basePath}/activity-log`} />
         </div>
         <div className="space-y-6">
@@ -391,7 +493,8 @@ function buildQuickActions(basePath: string): QuickAction[] {
       description: "Register someone to the church",
       icon: UserPlus,
       bgColor: "bg-blue-500",
-      href: `${basePath}/members/new`
+      href: `${basePath}/members/new`,
+      compact: true
     },
     {
       id: "add-branch",
@@ -399,7 +502,8 @@ function buildQuickActions(basePath: string): QuickAction[] {
       description: "Create new campus location",
       icon: Building,
       bgColor: "bg-purple-500",
-      href: `${basePath}/branches/new`
+      href: `${basePath}/branches/new`,
+      compact: true
     },
     {
       id: "add-pastor",
@@ -407,7 +511,8 @@ function buildQuickActions(basePath: string): QuickAction[] {
       description: "Register pastoral staff",
       icon: Users,
       bgColor: "bg-green-500",
-      href: `${basePath}/pastors/new`
+      href: `${basePath}/pastors/new`,
+      compact: true
     },
     {
       id: "create-family",
