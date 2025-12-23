@@ -38,6 +38,7 @@ import {
   Users,
   type LucideIcon
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Props = { params: { churchSlug: string; memberId: string } };
 
@@ -225,7 +226,179 @@ export default async function PastorMemberDetailPage({ params }: Props) {
 
   return (
     <div className="min-h-screen pb-24 lg:pb-8">
-      <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Mobile redesigned layout */}
+      <div className="lg:hidden space-y-4 px-4 py-4">
+        <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between border-b border-gray-100 bg-white/90 px-4 py-3 backdrop-blur">
+          <Link href={basePath} className="-ml-2 p-2" aria-label="Back to members">
+            <ChevronRight className="h-5 w-5 rotate-180 text-gray-700" />
+          </Link>
+          <h1 className="text-base font-semibold text-gray-900">Member Profile</h1>
+          <button className="-mr-2 p-2" aria-label="Toggle theme">
+            <Settings className="h-5 w-5 text-gray-500" />
+          </button>
+        </header>
+
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="relative">
+              <div className={`h-16 w-16 rounded-full ${getAvatarColor(fullName)} flex items-center justify-center text-xl font-semibold`}>
+                {getInitials(fullName)}
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900">{fullName}</h2>
+                <Badge variant={member.status === "ACTIVE" ? "default" : "secondary"}>{member.status}</Badge>
+              </div>
+              <p className="text-sm text-gray-500">Member since {formatDate(member.joined_date)}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {branchName}
+                </span>
+                {member.date_of_birth ? (
+                  <span className="flex items-center gap-1">
+                    <Cake className="h-3.5 w-3.5" />
+                    {formatDate(member.date_of_birth)}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-white px-4 py-3 shadow-sm">
+          <div className="grid grid-cols-4 gap-3 text-center">
+            {[
+              { label: "Call", icon: Phone, href: member.phone ? `tel:${member.phone}` : undefined },
+              { label: "Email", icon: Mail, href: member.email ? `mailto:${member.email}` : undefined },
+              { label: "Message", icon: Mail, href: member.email ? `mailto:${member.email}` : undefined },
+              { label: "Edit", icon: Pencil, href: `${basePath}/${member.id}/edit` }
+            ].map((action) => {
+              const content = (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    <action.icon className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">{action.label}</span>
+                </div>
+              );
+              return action.href ? (
+                <Link key={action.label} href={action.href} className="flex justify-center">
+                  {content}
+                </Link>
+              ) : (
+                <div key={action.label} className="opacity-50">
+                  {content}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Phone className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-900">{member.phone ?? "No phone"}</span>
+            </div>
+            {member.phone ? (
+              <Link href={`tel:${member.phone}`} className="text-xs font-semibold text-blue-600">
+                Call
+              </Link>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3">
+            <Mail className="h-4 w-4 text-gray-400" />
+            <span className="text-sm text-gray-900">{member.email ?? "No email"}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-gray-200 p-3">
+              <div className="mb-2 flex items-center gap-2 text-gray-500">
+                <CalendarCheck className="h-4 w-4" />
+                <span className="text-xs font-semibold uppercase tracking-wide">Attendance</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-gray-900">
+                  {attendanceStats.thisMonthTotal
+                    ? Math.round((attendanceStats.thisMonthCount / attendanceStats.thisMonthTotal) * 100)
+                    : 0}
+                  %
+                </span>
+                <span className="text-sm text-gray-500">
+                  ({attendanceStats.thisMonthCount}/{attendanceStats.thisMonthTotal})
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Last: {attendanceStats.lastAttendedDate ? formatDate(attendanceStats.lastAttendedDate) : "Never"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3">
+              <div className="mb-2 flex items-center gap-2 text-gray-500">
+                <Users className="h-4 w-4" />
+                <span className="text-xs font-semibold uppercase tracking-wide">Groups</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-gray-900">{groups.length}</span>
+                <span className="text-sm text-gray-500">active</span>
+              </div>
+              <Button variant="link" size="sm" className="px-0 text-xs text-blue-600" asChild>
+                <Link href={`/${params.churchSlug}/pastor/cell-groups`}>Join group</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Family Members</h3>
+            <Button variant="link" size="sm" className="px-0 text-blue-600" asChild>
+              <Link href={`${basePath}/${member.id}/families`}>Manage</Link>
+            </Button>
+          </div>
+          {fams.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No family linked yet.</p>
+          ) : (
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-200">
+              {fams.map((membership) => {
+                const familyName = membership.family?.family_name ?? "Family";
+                const relationship = membership.relationship ?? "";
+                return (
+                  <button
+                    key={membership.id}
+                    type="button"
+                    className="flex w-full items-center justify-between p-3 text-left hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-700">
+                        {getInitials(familyName)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{familyName}</p>
+                        <span
+                          className={cn(
+                            "text-xs",
+                            relationship === "HEAD" ? "text-blue-600 font-semibold uppercase" : "text-gray-500 capitalize"
+                          )}
+                        >
+                          {relationship === "HEAD" ? "HEAD" : relationship.toLowerCase() || "Member"}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop view (unchanged) */}
+      <div className="container mx-auto hidden max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:block lg:px-8">
         <nav className="flex items-center gap-2 text-sm text-muted-foreground">
           <Link href={basePath} className="transition-colors hover:text-foreground">
             Members
