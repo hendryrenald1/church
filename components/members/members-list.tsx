@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useInfiniteMembers } from "@/lib/hooks/use-infinite-members";
+import { useInfiniteMembers, type UserRole } from "@/lib/hooks/use-infinite-members";
 import { SimpleInfiniteList } from "@/components/ui/infinite-list";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,6 +32,7 @@ interface Branch {
 interface MembersListProps {
   churchSlug: string;
   basePath: string;
+  role?: UserRole;
 }
 
 // Generate initials from full name
@@ -284,7 +285,7 @@ function BulkActionsBar({
 /**
  * Members list with infinite scrolling, search, and filters
  */
-export function MembersList({ churchSlug, basePath }: MembersListProps) {
+export function MembersList({ churchSlug, basePath, role = "admin" }: MembersListProps) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<MemberFilters>({});
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -292,11 +293,12 @@ export function MembersList({ churchSlug, basePath }: MembersListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch branches for filter dropdown
+  // Fetch branches for filter dropdown (use role-appropriate endpoint)
   useEffect(() => {
     async function fetchBranches() {
       try {
-        const res = await fetch("/api/admin/branches");
+        const endpoint = role === "pastor" ? "/api/pastor/branches" : "/api/admin/branches";
+        const res = await fetch(endpoint);
         if (res.ok) {
           const data = await res.json();
           setBranches(data);
@@ -308,7 +310,7 @@ export function MembersList({ churchSlug, basePath }: MembersListProps) {
       }
     }
     fetchBranches();
-  }, []);
+  }, [role]);
 
   const {
     members,
@@ -323,7 +325,8 @@ export function MembersList({ churchSlug, basePath }: MembersListProps) {
   } = useInfiniteMembers({
     churchSlug,
     search,
-    filters
+    filters,
+    role
   });
 
   // Bulk selection logic

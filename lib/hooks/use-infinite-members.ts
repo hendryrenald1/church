@@ -4,11 +4,14 @@ import type { PaginatedResponse, MemberListItem, MemberFilters } from "@/types/i
 
 const DEFAULT_PAGE_SIZE = 20;
 
+export type UserRole = "admin" | "pastor";
+
 interface UseInfiniteMembersParams {
   churchSlug: string;
   search?: string;
   filters?: MemberFilters;
   enabled?: boolean;
+  role?: UserRole;
 }
 
 interface FetchMembersParams {
@@ -17,6 +20,7 @@ interface FetchMembersParams {
   limit?: number;
   search?: string;
   filters?: MemberFilters;
+  role?: UserRole;
 }
 
 /**
@@ -28,6 +32,7 @@ async function fetchMembers({
   limit = DEFAULT_PAGE_SIZE,
   search,
   filters,
+  role = "admin",
 }: FetchMembersParams): Promise<PaginatedResponse<MemberListItem>> {
   const params = new URLSearchParams();
 
@@ -37,7 +42,8 @@ async function fetchMembers({
   if (filters?.status) params.set("status", filters.status);
   if (filters?.branchId) params.set("branchId", filters.branchId);
 
-  const response = await fetch(`/api/admin/members?${params.toString()}`);
+  const endpoint = role === "pastor" ? "/api/pastor/members" : "/api/admin/members";
+  const response = await fetch(`${endpoint}?${params.toString()}`);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: "Failed to fetch members" }));
@@ -61,18 +67,20 @@ export function useInfiniteMembers({
   search = "",
   filters = {},
   enabled = true,
+  role = "admin",
 }: UseInfiniteMembersParams) {
   // Debounce search input to avoid excessive API calls
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const query = useInfiniteQuery({
-    queryKey: ["members", churchSlug, debouncedSearch, filters],
+    queryKey: ["members", churchSlug, debouncedSearch, filters, role],
     queryFn: ({ pageParam }) =>
       fetchMembers({
         churchSlug,
         cursor: pageParam,
         search: debouncedSearch,
         filters,
+        role,
       }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
