@@ -25,7 +25,6 @@ export async function PATCH(req: Request, { params }: Props) {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
     .from("branch")
-    // @ts-expect-error Supabase type inference issue with branch table
     .update({
       name: payload.name,
       city: payload.city,

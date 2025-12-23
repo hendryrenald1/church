@@ -36,7 +36,7 @@ export async function GET() {
   }, {});
 
   type GroupRecord = { id: string; name: string; type: string | null; description: string | null; branch: { id: string; name: string } | null };
-  const groupData = (data ?? []) as GroupRecord[];
+  const groupData = (data ?? []) as unknown as GroupRecord[];
   const payload = groupData.map((group) => ({
     ...group,
     memberCount: countMap[group.id] ?? 0
@@ -56,7 +56,6 @@ export async function POST(req: Request) {
 
   const supabase = createSupabaseAdminClient();
   const groupQuery = supabase.from("group");
-  // @ts-expect-error Supabase type inference issue
   const { data, error } = await groupQuery.insert({
     church_id: session.churchId,
     name: parsed.data.name,

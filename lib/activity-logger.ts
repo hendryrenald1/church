@@ -34,7 +34,6 @@ export async function logActivity({
   const supabase = createSupabaseAdminClient();
 
   const activityLogQuery = supabase.from("activity_log");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await activityLogQuery.insert({
     church_id: churchId,
     user_id: userId ?? null,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LayoutDashboard, Users, PlusCircle, User, MoreHorizontal } from "lucide-react";
+import { LayoutDashboard, Users, PlusCircle, User, MoreHorizontal, Layers3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { LogoutButton } from "@/components/navigation/logout-button";
@@ -18,6 +18,7 @@ export function PastorBottomNav({ churchSlug, currentPath, className }: Props) {
   const tabs = [
     { label: "Home", href: `/${churchSlug}/pastor/dashboard`, icon: LayoutDashboard },
     { label: "Members", href: `/${churchSlug}/pastor/members`, icon: Users },
+    { label: "Cell Groups", href: `/${churchSlug}/pastor/cell-groups`, icon: Layers3 },
     { label: "Add", href: `/${churchSlug}/pastor/members/new`, icon: PlusCircle },
     { label: "Profile", href: `/${churchSlug}/pastor/profile`, icon: User }
   ];

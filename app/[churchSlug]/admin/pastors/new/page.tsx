@@ -30,7 +30,7 @@ export default async function AdminCreatePastorPage({ params }: { params: { chur
           Pastors are created from members, with optional branch assignments.
         </p>
       </div>
-      <PastorWizard churchSlug={params.churchSlug} branches={(branchData ?? []) as BranchSummary[]} />
+      <PastorWizard churchSlug={params.churchSlug} branches={(branchData ?? []) as unknown as BranchSummary[]} />
     </div>
   );
 }

@@ -151,7 +151,7 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
   const recentActivities = await getRecentActivities(supabase, churchId);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
         <h1 className="text-3xl font-bold">Welcome back, {adminName}! 👋</h1>
         <p className="text-muted-foreground">Here&apos;s what&apos;s happening at {churchName} today.</p>

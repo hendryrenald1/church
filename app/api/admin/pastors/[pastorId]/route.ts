@@ -64,11 +64,9 @@ export async function PATCH(req: Request, { params }: Props) {
   }
 
   const memberQuery = supabase.from("member");
-  // @ts-expect-error Supabase type inference issue
   await memberQuery.update({ email: parsed.data.email }).eq("id", parsed.data.memberId).eq("church_id", session.churchId);
 
   const pastorProfileQuery = supabase.from("pastor_profile");
-  // @ts-expect-error Supabase type inference issue
   const { error: updateError } = await pastorProfileQuery.update({
     title: parsed.data.title,
     ordination_date: parsed.data.ordinationDate,
@@ -85,7 +83,6 @@ export async function PATCH(req: Request, { params }: Props) {
       pastor_profile_id: profile.id,
       branch_id: branchId
     }));
-    // @ts-expect-error Supabase type inference issue
     await pastorBranchQuery.insert(insertData);
   }
 
@@ -121,7 +118,6 @@ export async function PATCH(req: Request, { params }: Props) {
       member_id: parsed.data.memberId
     };
     const appUserQuery = supabase.from("app_user");
-    // @ts-expect-error Supabase type inference issue
     await appUserQuery.upsert(
       {
         id: userId,
@@ -158,7 +154,6 @@ export async function PATCH(req: Request, { params }: Props) {
     if (!authUser) throw new Error("Failed to create pastor auth user");
     await supabase.auth.admin.inviteUserByEmail(parsed.data.email, { data: metadata });
     const appUserQuery2 = supabase.from("app_user");
-    // @ts-expect-error Supabase type inference issue
     await appUserQuery2.upsert(
       {
         id: authUser.id,

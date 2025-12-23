@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
     branch: { id: string; name: string } | null;
   };
 
-  const items = (data ?? []) as MemberRow[];
+  const items = (data ?? []) as unknown as MemberRow[];
   const hasMore = items.length > limit;
   const pageItems = hasMore ? items.slice(0, limit) : items;
   const nextCursor = hasMore ? pageItems[pageItems.length - 1]?.id : null;
@@ -158,7 +158,6 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const supabase = createSupabaseAdminClient();
   const memberQuery = supabase.from("member");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await memberQuery.insert({
     church_id: session.churchId,
     branch_id: parsed.data.branchId,

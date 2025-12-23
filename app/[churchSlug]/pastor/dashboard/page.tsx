@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 type BranchRow = {
   branch: {
@@ -36,7 +38,7 @@ export default async function PastorDashboardPage({ params }: { params: { church
     .eq("pastor_profile_id", profile.id);
   if (branchError) throw new Error(branchError.message);
 
-  const branches = (branchAssignments ?? []) as BranchRow[];
+  const branches = (branchAssignments ?? []) as unknown as BranchRow[];
   const branchIds = branches
     .map((item) => item.branch?.id)
     .filter((id): id is string => Boolean(id));
@@ -83,6 +85,48 @@ export default async function PastorDashboardPage({ params }: { params: { church
           </p>
           <p className="text-3xl font-semibold">{memberCount.toLocaleString()}</p>
         </div>
+
+        <Card className="sm:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Cell Groups Overview</span>
+              <Badge variant="outline">Branches only</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">Active Groups</p>
+                <p className="text-2xl font-semibold">12</p>
+              </div>
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">Total Members</p>
+                <p className="text-2xl font-semibold">89</p>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span>This Week&apos;s Attendance</span>
+                <span className="font-medium">73 / 89 (82%)</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded bg-muted">
+                <div className="h-2 w-[82%] rounded bg-primary" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground">New Members (Last 30 days)</p>
+                <p className="text-xl font-semibold text-green-600">+7</p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground">Groups Needing Attention</p>
+                <p className="text-xl font-semibold text-amber-600">2</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

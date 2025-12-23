@@ -20,7 +20,6 @@ export async function POST(req: Request) {
   const payload = await req.json();
   const supabase = createSupabaseAdminClient();
   const pastorBranchQuery = supabase.from("pastor_branch");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await pastorBranchQuery.insert({
     church_id: session.churchId,
     pastor_profile_id: payload.pastorProfileId,

@@ -120,7 +120,6 @@ export async function PATCH(req: Request, { params }: Props) {
     }
     for (const change of adminEmailChanges) {
       const appUserUpdateQuery = supabase.from("app_user");
-      // @ts-expect-error Supabase type inference issue
       const { error: revertAppUserError } = await appUserUpdateQuery.update({ email: change.previousEmail }).eq("id", change.id);
       if (revertAppUserError) {
         console.error("Failed to revert app_user email:", revertAppUserError);
@@ -177,7 +176,6 @@ export async function PATCH(req: Request, { params }: Props) {
         return NextResponse.json({ error: "Linked admin user not found" }, { status: 404 });
       }
       const appUserQuery = supabase.from("app_user");
-      // @ts-expect-error Supabase type inference issue
       const { error: appUserUpdateError } = await appUserQuery.update({ email: primaryContactEmail! }).eq("id", linkedAppUser.id);
       if (appUserUpdateError) {
         console.error("Failed to sync app_user email:", appUserUpdateError);
@@ -251,7 +249,6 @@ export async function PATCH(req: Request, { params }: Props) {
             return NextResponse.json({ error: authUpdateError.message }, { status: 400 });
           }
           const appUserUpdateQuery = supabase.from("app_user");
-          // @ts-expect-error Supabase type inference issue
           const { error: appUserUpdateError } = await appUserUpdateQuery.update({ email: admin.email }).eq("id", admin.id);
           if (appUserUpdateError) {
             console.error("Failed to update app_user email:", appUserUpdateError);
@@ -303,7 +300,6 @@ export async function PATCH(req: Request, { params }: Props) {
         }
         const authUserId = createdUser.user.id;
         const appUserQuery = supabase.from("app_user");
-        // @ts-expect-error Supabase type inference issue
         const { error: appUserInsertError } = await appUserQuery.insert({
           id: authUserId,
           email: admin.email,
@@ -327,13 +323,11 @@ export async function PATCH(req: Request, { params }: Props) {
   let updatedChurch: ChurchRecord = church;
   if (Object.keys(updates).length > 0) {
     const churchQuery = supabase.from("church");
-    // @ts-expect-error Supabase type inference issue
     const { data: churchData, error } = await churchQuery.update(updates).eq("id", church.id).select().single();
     if (error) {
       console.error("Update error:", error);
       if (emailChanged && linkedAppUser) {
         const revertQuery = supabase.from("app_user");
-        // @ts-expect-error Supabase type inference issue
         const { error: revertAppUserError } = await revertQuery.update({ email: linkedAppUser.email }).eq("id", linkedAppUser.id);
         if (revertAppUserError) console.error("Failed to revert app_user email:", revertAppUserError);
       }

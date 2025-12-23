@@ -45,7 +45,6 @@ export async function POST(req: Request, { params }: Params) {
 
   const supabase = createSupabaseAdminClient();
   const announcementQuery = supabase.from("group_announcement");
-  // @ts-expect-error Supabase type inference issue
   const { data, error } = await announcementQuery.insert({
     church_id: session.churchId,
     group_id: params.groupId,

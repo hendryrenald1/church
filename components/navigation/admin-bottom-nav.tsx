@@ -73,6 +73,14 @@ export function AdminBottomNav({ churchSlug, currentPath, className }: Props) {
                 Groups
               </Link>
               <Link
+                href={`/${churchSlug}/admin/cell-groups`}
+                className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium"
+                onClick={() => setOpen(false)}
+              >
+                <Users className="h-4 w-4" />
+                Cell Groups
+              </Link>
+              <Link
                 href={`/${churchSlug}/admin/pastors`}
                 className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium"
                 onClick={() => setOpen(false)}

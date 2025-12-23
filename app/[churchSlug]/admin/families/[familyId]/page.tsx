@@ -114,7 +114,7 @@ export default async function AdminFamilyDetailPage({
     notFound();
   }
 
-  const family = mapFamilyDetail(data as FamilyRow);
+  const family = mapFamilyDetail(data as unknown as FamilyRow);
 
   const activities = await getFamilyActivities(params.familyId, session.churchId);
 

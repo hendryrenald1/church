@@ -41,7 +41,7 @@ export default async function AdminFamiliesPage({
   }
 
   const searchTerm = (searchParams?.search ?? "").trim().toLowerCase();
-  const families = ((data ?? []) as FamilyRow[]).filter((family) => {
+  const families = ((data ?? []) as unknown as FamilyRow[]).filter((family) => {
     if (!searchTerm) return true;
     const familyName = (family.family_name ?? "").toLowerCase();
     const memberNames = family.family_member

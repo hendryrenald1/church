@@ -42,7 +42,6 @@ export async function PATCH(req: Request, { params }: Props) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const supabase = createSupabaseAdminClient();
   const memberQuery = supabase.from("member");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await memberQuery.update({
     first_name: parsed.data.firstName,
     last_name: parsed.data.lastName,

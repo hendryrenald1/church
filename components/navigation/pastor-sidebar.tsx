@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Users, PlusCircle, User } from "lucide-react";
+import { LayoutDashboard, Users, PlusCircle, User, Layers3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/navigation/logout-button";
 
 const getNavItems = (slug: string) => [
   { label: "Dashboard", href: `/${slug}/pastor/dashboard`, icon: LayoutDashboard },
   { label: "Members", href: `/${slug}/pastor/members`, icon: Users },
+  { label: "Cell Groups", href: `/${slug}/pastor/cell-groups`, icon: Layers3 },
   { label: "Add Member", href: `/${slug}/pastor/members/new`, icon: PlusCircle },
   { label: "My Profile", href: `/${slug}/pastor/profile`, icon: User }
 ];

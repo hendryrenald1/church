@@ -37,7 +37,7 @@ export default async function AdminGroupsPage({ params }: { params: { churchSlug
 
   type GroupRow = Database["public"]["Tables"]["group"]["Row"];
   type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
-  const groupsRaw = (groupsData ?? []) as Array<GroupRow & { branch: Pick<BranchRow, "id" | "name"> | null }>;
+  const groupsRaw = (groupsData ?? []) as unknown as Array<GroupRow & { branch: Pick<BranchRow, "id" | "name"> | null }>;
 
   const groups: GroupSummary[] = groupsRaw.map((group) => ({
     id: group.id,

@@ -5,24 +5,17 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { AlertTriangle, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -113,66 +106,126 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl font-semibold tracking-tight">
+    <div className="w-full max-w-sm space-y-8">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           Welcome back
-        </CardTitle>
-        <CardDescription>
+        </h1>
+        <p className="text-muted-foreground">
           Sign in to manage your church securely.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-4" onSubmit={onSubmit}>
-          {error && (
-            <Alert variant="destructive">
-              <ExclamationTriangleIcon className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="pastor@yourchurch.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
+        </p>
+      </div>
+
+      {/* Form */}
+      <form className="space-y-6" onSubmit={onSubmit}>
+        {error && (
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium">
+            Email address
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="pastor@yourchurch.com"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            className="h-11"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-medium">
+              Password
+            </Label>
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-muted-foreground transition-colors hover:text-primary"
+            >
+              Forgot password?
+            </Link>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
+          <div className="relative">
             <Input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              className="h-11 pr-10"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="flex-col items-start gap-4">
-        <div className="text-sm text-muted-foreground">
+        </div>
+
+        <Button
+          type="submit"
+          className="h-11 w-full font-medium transition-all hover:shadow-md hover:shadow-primary/25"
+          disabled={loading}
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Signing in...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Sign In
+              <ArrowRight className="h-4 w-4" />
+            </span>
+          )}
+        </Button>
+      </form>
+
+      {/* Footer */}
+      <div className="space-y-4 pt-4">
+        <p className="text-center text-sm text-muted-foreground">
           Your data stays private and access is limited to authorized staff.
+        </p>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              New to ChurchFlow?
+            </span>
+          </div>
         </div>
-        <div className="text-sm text-muted-foreground">
-          New here?{" "}
-          <Link
-            href="/auth/register-church"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
+
+        <Button
+          variant="outline"
+          className="h-11 w-full font-medium"
+          asChild
+        >
+          <Link href="/auth/register-church">
             Register your church
-          </Link>{" "}
-          — takes under 2 minutes.
-        </div>
-      </CardFooter>
-    </Card>
+            <span className="ml-2 text-xs text-muted-foreground">— takes under 2 minutes</span>
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }

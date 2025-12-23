@@ -17,7 +17,7 @@ export async function getGroupForChurch(groupId: string, churchId: string): Prom
     .eq("id", groupId)
     .single();
   if (error || !data) return { error: error?.message ?? "Group not found" };
-  const groupData = data as GroupData;
+  const groupData = data as unknown as GroupData;
   if (groupData.church_id !== churchId) return { error: "Forbidden" };
   return { data: groupData };
 }

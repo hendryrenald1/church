@@ -51,7 +51,7 @@ export default async function PastorMembersPage({ params }: { params: { churchSl
       console.error("Failed to load members", error);
       throw new Error("Failed to load members");
     }
-    members = (data ?? []) as MemberRow[];
+    members = (data ?? []) as unknown as MemberRow[];
   }
 
   const base = `/${params.churchSlug}/pastor/members`;

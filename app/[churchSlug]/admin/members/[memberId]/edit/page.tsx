@@ -50,7 +50,7 @@ export default async function AdminEditMemberPage({
     | "date_of_birth"
     | "baptism_date"
   >;
-  const branches = (branchesData ?? []) as BranchRow[];
+  const branches = (branchesData ?? []) as unknown as BranchRow[];
   const member = memberData as MemberRow;
 
   return (

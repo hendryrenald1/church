@@ -42,7 +42,6 @@ export async function POST(req: Request, { params }: Params) {
   if (!rows.length) return NextResponse.json({ error: "No valid members" }, { status: 400 });
 
   const groupMemberQuery = supabase.from("group_member");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await groupMemberQuery.insert(rows);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

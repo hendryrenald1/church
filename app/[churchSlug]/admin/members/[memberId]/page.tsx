@@ -169,9 +169,9 @@ export default async function AdminMemberDetailPage({ params }: Props) {
   type GroupMemberRow = Database["public"]["Tables"]["group_member"]["Row"];
   type GroupRow = Database["public"]["Tables"]["group"]["Row"];
 
-  const member = memberData as MemberRecord;
-  const fams = (familyMemberships ?? []) as FamilyMembershipRecord[];
-  const groupMembershipRecords = (groupMemberships ?? []) as Array<
+  const member = memberData as unknown as MemberRecord;
+  const fams = (familyMemberships ?? []) as unknown as FamilyMembershipRecord[];
+  const groupMembershipRecords = (groupMemberships ?? []) as unknown as Array<
     Pick<GroupMemberRow, "id" | "joined_at"> & { group: Pick<GroupRow, "id" | "name" | "type"> | null }
   >;
   const fullName = `${member.first_name} ${member.last_name}`;

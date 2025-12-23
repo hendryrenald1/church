@@ -27,7 +27,6 @@ export async function POST(req: Request, { params }: Props) {
   const member = memberData as { first_name: string; last_name: string } | null;
 
   const familyMemberQuery = supabase.from("family_member");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await familyMemberQuery.insert({
     family_id: params.familyId,
     member_id: payload.memberId,

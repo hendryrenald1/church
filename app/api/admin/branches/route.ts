@@ -16,7 +16,6 @@ export async function POST(req: Request) {
   if (!session || session.role !== "ADMIN" || !session.churchId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const payload = await req.json();
   const supabase = createSupabaseAdminClient();
-  // @ts-expect-error Supabase type inference issue with branch table
   const { error } = await supabase.from("branch").insert({
     church_id: session.churchId,
     name: payload.name,

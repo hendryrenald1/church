@@ -40,7 +40,6 @@ export async function PATCH(req: Request, { params }: Params) {
 
   const supabase = createSupabaseAdminClient();
   const groupQuery = supabase.from("group");
-  // @ts-expect-error Supabase type inference issue
   const { data, error } = await groupQuery.update({
     name: parsed.data.name ?? existing.data?.name,
     type: parsed.data.type ?? existing.data?.type,

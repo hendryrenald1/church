@@ -29,7 +29,6 @@ export async function POST(req: Request) {
     if (slugTaken) return NextResponse.json({ error: "Slug taken" }, { status: 409 });
 
     const churchQuery = supabase.from("church");
-    // @ts-expect-error Supabase type inference issue
     const { data: churchData, error: churchErr } = await churchQuery.insert({
       name,
       slug,
@@ -60,7 +59,6 @@ export async function POST(req: Request) {
     }
 
     const appUserQuery = supabase.from("app_user");
-    // @ts-expect-error Supabase type inference issue
     const { error: appUserErr } = await appUserQuery.insert({
       id: user.user.id,
       email: primaryContactEmail,

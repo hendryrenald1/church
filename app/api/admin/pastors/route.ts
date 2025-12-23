@@ -68,12 +68,10 @@ export async function POST(req: Request) {
 
   if (member.email !== parsed.data.email) {
     const memberQuery = supabase.from("member");
-    // @ts-expect-error Supabase type inference issue
     await memberQuery.update({ email: parsed.data.email }).eq("id", parsed.data.memberId).eq("church_id", session.churchId);
   }
 
   const pastorProfileQuery = supabase.from("pastor_profile");
-  // @ts-expect-error Supabase type inference issue
   const { data: profileData, error } = await pastorProfileQuery.insert({
     church_id: session.churchId,
     member_id: parsed.data.memberId,
@@ -92,7 +90,6 @@ export async function POST(req: Request) {
       pastor_profile_id: profile.id,
       branch_id: branchId
     }));
-    // @ts-expect-error Supabase type inference issue
     await pastorBranchQuery.insert(insertData);
   }
 
@@ -133,7 +130,6 @@ export async function POST(req: Request) {
   if (inviteError) console.error("Pastor invite email failed", inviteError);
 
   const appUserQuery = supabase.from("app_user");
-  // @ts-expect-error Supabase type inference issue
   const { error: appUserError } = await appUserQuery.upsert(
     {
       id: authUser.id,

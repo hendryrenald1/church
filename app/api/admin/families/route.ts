@@ -47,7 +47,6 @@ async function createMemberIfNew(
   }
   if (memberRef.new) {
     const memberQuery = supabase.from("member");
-    // @ts-expect-error Supabase type inference issue
     const { data, error } = await memberQuery.insert({
       church_id: churchId,
       first_name: memberRef.new.firstName,
@@ -79,7 +78,6 @@ export async function POST(req: Request) {
   try {
     // 1. Create family
     const familyQuery = supabase.from("family");
-    // @ts-expect-error Supabase type inference issue
     const { data: family, error } = await familyQuery.insert({
       church_id: session.churchId,
       family_name: parsed.data.familyName,
@@ -99,7 +97,6 @@ export async function POST(req: Request) {
 
     if (headMemberId) {
       const familyMemberQuery = supabase.from("family_member");
-      // @ts-expect-error Supabase type inference issue
       const { error: linkError } = await familyMemberQuery.insert({
         church_id: session.churchId,
         family_id: familyData.id,
@@ -115,7 +112,6 @@ export async function POST(req: Request) {
       const spouseMemberId = await createMemberIfNew(supabase, session.churchId, parsed.data.spouseMember);
       if (spouseMemberId) {
         const familyMemberQuery = supabase.from("family_member");
-        // @ts-expect-error Supabase type inference issue
         const { error: spouseError } = await familyMemberQuery.insert({
           church_id: session.churchId,
           family_id: familyData.id,
@@ -133,7 +129,6 @@ export async function POST(req: Request) {
         const childMemberId = await createMemberIfNew(supabase, session.churchId, child);
         if (childMemberId) {
           const familyMemberQuery = supabase.from("family_member");
-          // @ts-expect-error Supabase type inference issue
           const { error: childError } = await familyMemberQuery.insert({
             church_id: session.churchId,
             family_id: familyData.id,

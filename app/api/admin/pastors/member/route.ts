@@ -31,7 +31,6 @@ export async function POST(request: Request) {
   const supabase = createSupabaseAdminClient();
 
   const memberQuery = supabase.from("member");
-  // @ts-expect-error Supabase type inference issue
   const { data, error } = await memberQuery.insert({
     church_id: session.churchId,
     branch_id: parsed.data.branchId,
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   type MemberRow = { id: string; first_name: string; last_name: string; email: string | null; phone: string | null; status: string; branch: { id: string; name: string } | null };
-  const member = data as MemberRow;
+  const member = data as unknown as MemberRow;
   const response: MemberSearchResult = {
     id: member.id,
     firstName: member.first_name,

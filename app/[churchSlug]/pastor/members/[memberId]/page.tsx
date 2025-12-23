@@ -50,7 +50,7 @@ export default async function PastorMemberDetailPage({ params }: Props) {
     date_of_birth: string | null;
     baptism_date: string | null;
   };
-  const member = memberData as MemberRecord;
+  const member = memberData as unknown as MemberRecord;
 
   const displayDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : "—");
 

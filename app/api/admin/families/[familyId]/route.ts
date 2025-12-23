@@ -70,7 +70,6 @@ export async function PATCH(req: Request, { params }: Props) {
   const payload = await req.json();
   const supabase = createSupabaseAdminClient();
   const familyQuery = supabase.from("family");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await familyQuery.update({
     family_name: payload.familyName,
     wedding_anniversary: payload.weddingAnniversary,

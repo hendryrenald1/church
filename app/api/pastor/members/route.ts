@@ -38,7 +38,6 @@ export async function POST(req: Request) {
   const payload = await req.json();
   const supabase = createSupabaseAdminClient();
   const memberQuery = supabase.from("member");
-  // @ts-expect-error Supabase type inference issue
   const { error } = await memberQuery.insert({
     church_id: session.churchId,
     branch_id: payload.branchId,

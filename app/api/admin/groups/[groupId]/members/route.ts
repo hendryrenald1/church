@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: Params) {
       );
     }
     if (branchId) query = query.eq("branch_id", branchId);
-    if (status) query = query.eq("status", status);
+    if (status && ["ACTIVE", "INACTIVE"].includes(status)) query = query.eq("status", status as "ACTIVE" | "INACTIVE");
 
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -48,7 +48,7 @@ export async function GET(req: Request, { params }: Params) {
     const memberIdsInGroup = groupMemberList.map((row) => row.member_id);
 
     type MemberRecord = { id: string; first_name: string; last_name: string; email: string | null; phone: string | null; date_of_birth: string | null; status: string; branch: { id: string; name: string } | null };
-    const memberData = (data ?? []) as MemberRecord[];
+    const memberData = (data ?? []) as unknown as MemberRecord[];
     const filtered = memberData.filter((member) => !memberIdsInGroup.includes(member.id));
     return NextResponse.json(filtered);
   }

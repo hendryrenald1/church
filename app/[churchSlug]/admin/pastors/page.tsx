@@ -60,7 +60,7 @@ export default async function AdminPastorsPage({
       <PastorFilters
         initialQuery={query}
         initialBranchId={branchId}
-        branches={(branchData ?? []) as BranchSummary[]}
+        branches={(branchData ?? []) as unknown as BranchSummary[]}
         basePath={basePath}
       />
       <Suspense fallback={<PastorTableSkeleton />}>
@@ -106,7 +106,7 @@ async function getPastors(churchId: string, filters: SearchParams) {
     }> | null;
   };
 
-  const rows = ((data ?? []) as PastorQueryRow[]).map((row) => {
+  const rows = ((data ?? []) as unknown as PastorQueryRow[]).map((row) => {
     const member = row.member;
     const branches =
       row.pastor_branch?.map((pb) => ({

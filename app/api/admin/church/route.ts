@@ -67,7 +67,6 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "Linked admin user not found" }, { status: 404 });
       }
       const appUserQuery = adminSupabase.from("app_user");
-      // @ts-expect-error Supabase type inference issue
       const { error: appUserUpdateError } = await appUserQuery.update({ email: requestedEmail }).eq("id", linkedAppUser.id);
       if (appUserUpdateError) {
         console.error("Failed to sync app_user email:", appUserUpdateError);
@@ -84,14 +83,11 @@ export async function PATCH(req: Request) {
     updates.primary_contact_email = requestedEmail;
   }
 
-  const churchQuery = supabase.from("church");
-  // @ts-expect-error Supabase type inference issue
-  const { error } = await churchQuery.update(updates).eq("id", session.churchId);
+  const { error } = await (supabase.from("church") as any).update(updates).eq("id", session.churchId);
   if (error) {
     if (emailChanged && linkedAppUser) {
       try {
         const appUserRevertQuery = adminSupabase.from("app_user");
-        // @ts-expect-error Supabase type inference issue
         await appUserRevertQuery.update({ email: linkedAppUser.email }).eq("id", linkedAppUser.id);
       } catch (revertAppUserError) {
         console.error("Failed to revert app_user email:", revertAppUserError);

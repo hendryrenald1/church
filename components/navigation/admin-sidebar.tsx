@@ -11,6 +11,7 @@ const getNavItems = (slug: string) => [
   { label: "Families", href: `/${slug}/admin/families`, icon: Home },
   { label: "Branches", href: `/${slug}/admin/branches`, icon: Building2 },
   { label: "Groups", href: `/${slug}/admin/groups`, icon: Layers3 },
+  { label: "Cell Groups", href: `/${slug}/admin/cell-groups`, icon: Users },
   { label: "Pastors", href: `/${slug}/admin/pastors`, icon: UserCog }
 ];
 

@@ -53,8 +53,8 @@ export default async function AdminPastorDetailPage({ params }: Props) {
     }> | null;
   };
 
-  const pastor = pastorData as PastorRecord;
-  const branchOptions = (branchData ?? []) as BranchSummary[];
+  const pastor = pastorData as unknown as PastorRecord;
+  const branchOptions = (branchData ?? []) as unknown as BranchSummary[];
   const member = pastor.member;
   const branchAssignments =
     pastor.pastor_branch?.map((pb) => ({

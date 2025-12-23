@@ -44,7 +44,7 @@ export default async function AdminGroupDetailPage({ params }: Props) {
   type GroupRow = Database["public"]["Tables"]["group"]["Row"];
   type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
   type GroupRecord = GroupRow & { branch: Pick<BranchRow, "id" | "name"> | null };
-  const group = groupData as GroupRecord;
+  const group = groupData as unknown as GroupRecord;
   const branches = (branchesData ?? []) as BranchOption[];
 
   return (
