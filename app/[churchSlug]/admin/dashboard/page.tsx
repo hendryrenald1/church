@@ -264,7 +264,7 @@ export default async function AdminDashboardPage({ params }: { params: { churchS
           </div>
 
           <div className="md:hidden">
-            <QuickActionsGrid actions={primaryQuickActions} compactLayout />
+            <QuickActionsGrid actions={primaryQuickActions} />
           </div>
           <div className="hidden md:block">
             <QuickActionsGrid actions={quickActions} />
@@ -493,8 +493,7 @@ function buildQuickActions(basePath: string): QuickAction[] {
       description: "Register someone to the church",
       icon: UserPlus,
       bgColor: "bg-blue-500",
-      href: `${basePath}/members/new`,
-      compact: true
+      href: `${basePath}/members/new`
     },
     {
       id: "add-branch",
@@ -502,8 +501,7 @@ function buildQuickActions(basePath: string): QuickAction[] {
       description: "Create new campus location",
       icon: Building,
       bgColor: "bg-purple-500",
-      href: `${basePath}/branches/new`,
-      compact: true
+      href: `${basePath}/branches/new`
     },
     {
       id: "add-pastor",
@@ -511,8 +509,7 @@ function buildQuickActions(basePath: string): QuickAction[] {
       description: "Register pastoral staff",
       icon: Users,
       bgColor: "bg-green-500",
-      href: `${basePath}/pastors/new`,
-      compact: true
+      href: `${basePath}/pastors/new`
     },
     {
       id: "create-family",
