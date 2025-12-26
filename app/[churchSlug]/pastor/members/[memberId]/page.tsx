@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/supabase";
@@ -39,6 +38,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AttendanceList } from "./attendance-list";
 
 type Props = { params: { churchSlug: string; memberId: string } };
 
@@ -155,7 +155,9 @@ export default async function PastorMemberDetailPage({ params }: Props) {
   const [
     { data: memberData, error: memberError },
     { data: familyMemberships, error: familyError },
-    { data: groupMemberships, error: groupError }
+    { data: groupMemberships, error: groupError },
+    { data: cellGroupMemberships, error: cellGroupError },
+    { data: attendanceData, error: attendanceError }
   ] = await Promise.all([
     supabase
       .from("member")
@@ -173,11 +175,40 @@ export default async function PastorMemberDetailPage({ params }: Props) {
       .from("group_member")
       .select("id, joined_at, group:group_id (id, name, type)")
       .eq("member_id", params.memberId)
+      .eq("church_id", session.churchId),
+    supabase
+      .from("cell_group_member")
+      .select("id, role, joined_at, archived_at, group:group_id (id, name, status)")
+      .eq("member_id", params.memberId)
       .eq("church_id", session.churchId)
+      .is("archived_at", null),
+    supabase
+      .from("meeting_attendance")
+      .select(`
+        id,
+        status,
+        recorded_at,
+        meeting:meeting_id (
+          id,
+          meeting_date,
+          start_time,
+          topic,
+          status,
+          group:group_id (
+            id,
+            name,
+            branch:branch_id (id, name)
+          )
+        )
+      `)
+      .eq("member_id", params.memberId)
+      .eq("church_id", session.churchId)
+      .in("status", ["PRESENT", "LATE"])
+      .order("recorded_at", { ascending: false })
   ]);
 
-  if (memberError || familyError || groupError || !memberData) {
-    console.error("Failed to load member", memberError ?? familyError ?? groupError);
+  if (memberError || familyError || groupError || cellGroupError || attendanceError || !memberData) {
+    console.error("Failed to load member", memberError ?? familyError ?? groupError ?? cellGroupError ?? attendanceError);
     notFound();
   }
 
@@ -195,17 +226,23 @@ export default async function PastorMemberDetailPage({ params }: Props) {
   };
   type GroupMemberRow = Database["public"]["Tables"]["group_member"]["Row"];
   type GroupRow = Database["public"]["Tables"]["group"]["Row"];
+  type CellGroupMemberRow = Database["public"]["Tables"]["cell_group_member"]["Row"];
+  type CellGroupRow = Database["public"]["Tables"]["cell_group"]["Row"];
 
   const member = memberData as unknown as MemberRecord;
   const fams = (familyMemberships ?? []) as unknown as FamilyMembershipRecord[];
   const groupMembershipRecords = (groupMemberships ?? []) as unknown as Array<
     Pick<GroupMemberRow, "id" | "joined_at"> & { group: Pick<GroupRow, "id" | "name" | "type"> | null }
   >;
+  const cellGroupMembershipRecords = (cellGroupMemberships ?? []) as unknown as Array<
+    Pick<CellGroupMemberRow, "id" | "role" | "joined_at" | "archived_at"> & { group: Pick<CellGroupRow, "id" | "name" | "status"> | null }
+  >;
   const fullName = `${member.first_name} ${member.last_name}`;
   const basePath = `/${params.churchSlug}/pastor/members`;
   const branchName = member.branch?.name ?? "Unassigned";
 
-  const groups: GroupCardItem[] = groupMembershipRecords.map((g) => ({
+  // Combine regular groups and cell groups
+  const regularGroups: GroupCardItem[] = groupMembershipRecords.map((g) => ({
     id: g.id,
     groupId: g.group?.id ?? "",
     name: g.group?.name ?? "Group",
@@ -214,14 +251,115 @@ export default async function PastorMemberDetailPage({ params }: Props) {
     joinedDate: g.joined_at
   }));
 
-  const attendanceEntries: AttendanceEntry[] = [];
+  const cellGroups: GroupCardItem[] = cellGroupMembershipRecords
+    .filter((g) => g.group?.status === "ACTIVE")
+    .map((g) => ({
+      id: g.id,
+      groupId: g.group?.id ?? "",
+      name: g.group?.name ?? "Cell Group",
+      type: "default" as GroupType,
+      role: g.role ?? "Member",
+      joinedDate: g.joined_at
+    }));
+
+  const groups: GroupCardItem[] = [...regularGroups, ...cellGroups];
+
+  // Process attendance data
+  type AttendanceRecord = {
+    id: string;
+    status: string;
+    recorded_at: string | null;
+    meeting: {
+      id: string;
+      meeting_date: string;
+      start_time: string | null;
+      topic: string | null;
+      status: string;
+      group: {
+        id: string;
+        name: string;
+        branch: { id: string; name: string } | null;
+      } | null;
+    } | null;
+  };
+
+  const attendanceRecords = (attendanceData ?? []) as unknown as AttendanceRecord[];
+
+  const attendanceEntries: AttendanceEntry[] = attendanceRecords
+    .filter((a) => a.meeting !== null)
+    .map((a) => ({
+      id: a.id,
+      eventName: a.meeting?.topic || a.meeting?.group?.name || "Group Meeting",
+      eventType: "group" as EventType,
+      date: a.meeting?.meeting_date ?? "",
+      checkInTime: a.recorded_at ?? a.meeting?.start_time ?? a.meeting?.meeting_date ?? "",
+      branch: a.meeting?.group?.branch?.name
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Calculate attendance stats
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  const thisMonthAttendance = attendanceEntries.filter((entry) => {
+    const entryDate = new Date(entry.date);
+    return entryDate >= thisMonthStart && entryDate <= thisMonthEnd;
+  });
+
+  // Calculate approximate total meetings this month (assuming weekly meetings for each group the member is in)
+  const weeksThisMonth = Math.ceil((thisMonthEnd.getDate() - thisMonthStart.getDate() + 1) / 7);
+  const estimatedTotalMeetings = groups.length * weeksThisMonth;
+
+  // Calculate current streak (consecutive weeks with at least one attendance)
+  let currentStreak = 0;
+  if (attendanceEntries.length > 0) {
+    const sortedDates = [...new Set(attendanceEntries.map((e) => e.date))]
+      .map((d) => new Date(d))
+      .sort((a, b) => b.getTime() - a.getTime());
+
+    if (sortedDates.length > 0) {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      // Check if most recent attendance is within last week
+      if (sortedDates[0] >= oneWeekAgo) {
+        currentStreak = 1;
+        for (let i = 1; i < sortedDates.length; i++) {
+          const daysDiff = (sortedDates[i - 1].getTime() - sortedDates[i].getTime()) / (1000 * 60 * 60 * 24);
+          if (daysDiff <= 14) {
+            // Within 2 weeks gap means continuous streak
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Calculate trend (compare this month to last month)
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastMonthAttendance = attendanceEntries.filter((entry) => {
+    const entryDate = new Date(entry.date);
+    return entryDate >= lastMonthStart && entryDate <= lastMonthEnd;
+  });
+
+  let trend: "up" | "down" | "stable" = "stable";
+  if (thisMonthAttendance.length > lastMonthAttendance.length) {
+    trend = "up";
+  } else if (thisMonthAttendance.length < lastMonthAttendance.length) {
+    trend = "down";
+  }
+
   const attendanceStats: AttendanceStats = {
-    lastAttendedDate: null,
-    thisMonthCount: 0,
-    thisMonthTotal: 0,
+    lastAttendedDate: attendanceEntries.length > 0 ? attendanceEntries[0].date : null,
+    thisMonthCount: thisMonthAttendance.length,
+    thisMonthTotal: Math.max(estimatedTotalMeetings, thisMonthAttendance.length),
     totalCheckins: attendanceEntries.length,
-    currentStreak: 0,
-    trend: "stable"
+    currentStreak,
+    trend
   };
 
   return (
@@ -585,45 +723,7 @@ export default async function PastorMemberDetailPage({ params }: Props) {
                   )}
                 </div>
 
-                <Tabs defaultValue="all" className="w-full">
-                  <TabsList className="w-full justify-start overflow-x-auto">
-                    <TabsTrigger value="all">All</TabsTrigger>
-                    <TabsTrigger value="sunday_service">Sunday Services</TabsTrigger>
-                    <TabsTrigger value="group">Groups</TabsTrigger>
-                    <TabsTrigger value="event">Events</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-
-                {attendanceEntries.length === 0 ? (
-                  <div className="rounded-lg border border-dashed p-6 text-center">
-                    <CalendarX className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">No attendance records yet</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Check-ins will appear here when recorded.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {attendanceEntries.map((entry) => (
-                      <div key={entry.id} className="flex items-center justify-between rounded-lg border p-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${getEventTypeStyles(entry.eventType)}`}>
-                            {getEventTypeIcon(entry.eventType)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{entry.eventName}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {entry.branch ? `${entry.branch} • ` : ""}
-                              {formatTime(entry.checkInTime)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{formatDate(entry.date)}</p>
-                          <p className="text-xs text-muted-foreground">{formatDay(entry.date)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <AttendanceList entries={attendanceEntries} />
               </CardContent>
             </Card>
           </div>

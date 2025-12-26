@@ -4,9 +4,11 @@ import {
   differenceInHours,
   differenceInMinutes,
   endOfMonth,
+  endOfWeek,
   format,
   startOfDay,
   startOfMonth,
+  startOfWeek,
   subDays
 } from "date-fns";
 import {
@@ -34,6 +36,7 @@ import { BranchSnapshot, type BranchSnapshotData } from "./_components/branch-sn
 import { QuickStats, type QuickStatsData } from "./_components/quick-stats";
 import { QuickActions, type QuickAction } from "./_components/quick-actions";
 import { RecentActivity, type RecentActivityItem } from "./_components/recent-activity";
+import { DashboardRefresher } from "./_components/dashboard-refresher";
 
 type MemberRow = Database["public"]["Tables"]["member"]["Row"];
 type FamilyRow = Database["public"]["Tables"]["family"]["Row"];
@@ -131,6 +134,8 @@ export default async function PastorDashboardPage({ params }: { params: { church
   const basePath = `/${params.churchSlug}/pastor`;
   const today = startOfDay(new Date());
   const thirtyDaysAgo = subDays(today, 30);
+  const weekStart = startOfWeek(today, { weekStartsOn: 0 }); // Sunday
+  const weekEnd = endOfWeek(today, { weekStartsOn: 0 });
 
   // If no branches assigned, show empty state
   if (branchIds.length === 0) {
@@ -155,6 +160,8 @@ export default async function PastorDashboardPage({ params }: { params: { church
     cellGroupsRes,
     cellGroupMembersRes,
     recentMeetingsRes,
+    thisWeekMeetingsRes,
+    thisWeekAttendanceRes,
     activityRes
   ] = await Promise.all([
     supabase
@@ -182,6 +189,20 @@ export default async function PastorDashboardPage({ params }: { params: { church
       .eq("church_id", churchId)
       .gte("meeting_date", subDays(today, 14).toISOString())
       .order("meeting_date", { ascending: false }),
+    // This week's meetings for attendance calculation
+    supabase
+      .from("cell_meeting")
+      .select("id, group_id, meeting_date, status")
+      .eq("church_id", churchId)
+      .gte("meeting_date", weekStart.toISOString())
+      .lte("meeting_date", weekEnd.toISOString())
+      .eq("status", "HELD"),
+    // This week's attendance records
+    supabase
+      .from("meeting_attendance")
+      .select("id, meeting_id, member_id, status")
+      .eq("church_id", churchId)
+      .in("status", ["PRESENT", "LATE"]),
     supabase
       .from("activity_log")
       .select("id, activity_type, title, description, created_at")
@@ -195,6 +216,8 @@ export default async function PastorDashboardPage({ params }: { params: { church
   const cellGroups = (cellGroupsRes.data ?? []) as CellGroupSelect[];
   const cellGroupMembers = (cellGroupMembersRes.data ?? []) as CellGroupMemberSelect[];
   const recentMeetings = recentMeetingsRes.data ?? [];
+  const thisWeekMeetings = (thisWeekMeetingsRes.data ?? []) as { id: string; group_id: string; meeting_date: string; status: string }[];
+  const allAttendanceRecords = (thisWeekAttendanceRes.data ?? []) as { id: string; meeting_id: string; member_id: string; status: string }[];
 
   // Filter cell group members to only those in pastor's cell groups
   const pastorGroupIds = new Set(cellGroups.map((g) => g.id));
@@ -206,10 +229,28 @@ export default async function PastorDashboardPage({ params }: { params: { church
     (m) => new Date(m.created_at) >= thirtyDaysAgo
   ).length;
 
-  // Calculate attendance (mock for now - would need meeting_attendance table)
+  // Calculate this week's attendance from real data
+  // Get meeting IDs for this week's meetings in pastor's groups
+  const thisWeekMeetingIds = new Set(
+    thisWeekMeetings
+      .filter((m) => pastorGroupIds.has(m.group_id))
+      .map((m) => m.id)
+  );
+
+  // Filter attendance records to only this week's meetings in pastor's groups
+  const thisWeekAttendance = allAttendanceRecords.filter((a) => thisWeekMeetingIds.has(a.meeting_id));
+
+  // Count unique members who attended this week
+  const attendedMemberIds = new Set(thisWeekAttendance.map((a) => a.member_id));
+  const attendedCount = attendedMemberIds.size;
+
+  // Total expected = all active cell group members in pastor's groups
   const totalCellGroupMembers = filteredCellGroupMembers.length;
-  const attendancePercentage = totalCellGroupMembers > 0 ? 82 : 0; // Placeholder
-  const attendedCount = Math.round((attendancePercentage / 100) * totalCellGroupMembers);
+
+  // Calculate attendance percentage
+  const attendancePercentage = totalCellGroupMembers > 0
+    ? Math.round((attendedCount / totalCellGroupMembers) * 100)
+    : 0;
 
   const metrics = {
     members: members.length,
@@ -280,6 +321,9 @@ export default async function PastorDashboardPage({ params }: { params: { church
 
   return (
     <div className="space-y-5 px-3 pt-2 pb-4 sm:space-y-6 sm:px-6 sm:pt-4 lg:px-8">
+      {/* Auto-refresh dashboard data every 30 seconds */}
+      <DashboardRefresher intervalSeconds={30} />
+
       <WelcomeHeader pastorName={pastorName} />
 
       <MetricsCards metrics={metrics} basePath={basePath} />
