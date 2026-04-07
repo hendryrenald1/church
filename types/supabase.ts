@@ -72,6 +72,12 @@ export interface Database {
           joined_date: string;
           date_of_birth: string | null;
           baptism_date: string | null;
+          address_line1: string | null;
+          address_line2: string | null;
+          city: string | null;
+          state_county: string | null;
+          postcode: string | null;
+          country: "UK" | "IN" | null;
           created_at: string;
           updated_at: string;
         };

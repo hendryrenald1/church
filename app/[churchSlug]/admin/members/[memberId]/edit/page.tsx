@@ -26,7 +26,7 @@ export default async function AdminEditMemberPage({
       .order("name", { ascending: true }),
     supabase
       .from("member")
-      .select("id, first_name, last_name, email, phone, branch_id, status, joined_date, date_of_birth, baptism_date")
+      .select("id, first_name, last_name, email, phone, branch_id, status, joined_date, date_of_birth, baptism_date, address_line1, address_line2, city, state_county, postcode, country")
       .eq("church_id", session.churchId)
       .eq("id", params.memberId)
       .single()
@@ -49,6 +49,12 @@ export default async function AdminEditMemberPage({
     | "joined_date"
     | "date_of_birth"
     | "baptism_date"
+    | "address_line1"
+    | "address_line2"
+    | "city"
+    | "state_county"
+    | "postcode"
+    | "country"
   >;
   const branches = (branchesData ?? []) as unknown as BranchRow[];
   const member = memberData as MemberRow;

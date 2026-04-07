@@ -16,7 +16,13 @@ const memberSchema = z.object({
   baptismDate: z.string().nullable(),
   gender: z.string().optional(),
   email: z.string().email().nullable(),
-  phone: z.string().nullable()
+  phone: z.string().nullable(),
+  addressLine1: z.string().nullable().optional(),
+  addressLine2: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  stateCounty: z.string().nullable().optional(),
+  postcode: z.string().nullable().optional(),
+  country: z.enum(["UK", "IN"]).optional()
 });
 
 /**
@@ -169,7 +175,13 @@ export async function POST(req: Request) {
     status: parsed.data.status,
     joined_date: parsed.data.joinedDate,
     date_of_birth: parsed.data.dateOfBirth,
-    baptism_date: parsed.data.baptismDate
+    baptism_date: parsed.data.baptismDate,
+    address_line1: parsed.data.addressLine1 ?? null,
+    address_line2: parsed.data.addressLine2 ?? null,
+    city: parsed.data.city ?? null,
+    state_county: parsed.data.stateCounty ?? null,
+    postcode: parsed.data.postcode ?? null,
+    country: parsed.data.country ?? "UK"
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

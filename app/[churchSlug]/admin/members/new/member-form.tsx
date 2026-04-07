@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AddressInput, AddressData, Country, getEmptyAddress } from "@/components/forms/address-input";
 
 type Branch = { id: string; name: string };
 type Member = {
@@ -15,12 +16,20 @@ type Member = {
   joined_date: string;
   date_of_birth: string | null;
   baptism_date: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_county: string | null;
+  postcode: string | null;
+  country: string | null;
 };
 
 type Props = {
   churchSlug: string;
   branches: Branch[];
   member?: Member;
+  apiBasePath?: "admin" | "pastor";
+  redirectPath?: string;
 };
 
 const initialDate = new Date().toISOString().split("T")[0];
@@ -30,7 +39,7 @@ const normalizeDateInput = (value: string | null | undefined) => {
   return value.split("T")[0];
 };
 
-export default function MemberForm({ churchSlug, branches, member }: Props) {
+export default function MemberForm({ churchSlug, branches, member, apiBasePath = "admin", redirectPath }: Props) {
   const router = useRouter();
   const [form, setForm] = useState({
     firstName: member?.first_name ?? "",
@@ -42,6 +51,14 @@ export default function MemberForm({ churchSlug, branches, member }: Props) {
     joinedDate: member ? normalizeDateInput(member.joined_date) : initialDate,
     dateOfBirth: normalizeDateInput(member?.date_of_birth),
     baptismDate: normalizeDateInput(member?.baptism_date)
+  });
+  const [address, setAddress] = useState<AddressData>({
+    addressLine1: member?.address_line1 ?? "",
+    addressLine2: member?.address_line2 ?? "",
+    city: member?.city ?? "",
+    stateCounty: member?.state_county ?? "",
+    postcode: member?.postcode ?? "",
+    country: (member?.country as Country) ?? "UK"
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,10 +82,16 @@ export default function MemberForm({ churchSlug, branches, member }: Props) {
       status: form.status as "ACTIVE" | "INACTIVE",
       joinedDate: form.joinedDate,
       dateOfBirth: form.dateOfBirth || null,
-      baptismDate: form.baptismDate || null
+      baptismDate: form.baptismDate || null,
+      addressLine1: address.addressLine1.trim() || null,
+      addressLine2: address.addressLine2.trim() || null,
+      city: address.city.trim() || null,
+      stateCounty: address.stateCounty.trim() || null,
+      postcode: address.postcode.trim() || null,
+      country: address.country
     };
 
-    const endpoint = member ? `/api/admin/members/${member.id}` : "/api/admin/members";
+    const endpoint = member ? `/api/${apiBasePath}/members/${member.id}` : `/api/${apiBasePath}/members`;
     const method = member ? "PATCH" : "POST";
 
     const res = await fetch(endpoint, {
@@ -85,7 +108,7 @@ export default function MemberForm({ churchSlug, branches, member }: Props) {
     }
 
     setSubmitting(false);
-    router.push(`/${churchSlug}/admin/members`);
+    router.push(redirectPath ?? `/${churchSlug}/${apiBasePath}/members`);
     router.refresh();
   };
 
@@ -180,6 +203,14 @@ export default function MemberForm({ churchSlug, branches, member }: Props) {
           onChange={onChange("baptismDate")}
         />
       </label>
+      <div className="md:col-span-2 pt-4 border-t mt-2">
+        <h3 className="text-lg font-medium mb-4">Address</h3>
+        <AddressInput
+          value={address}
+          onChange={setAddress}
+          disabled={submitting}
+        />
+      </div>
       {error && <div className="md:col-span-2 text-sm text-destructive">{error}</div>}
       <div className="md:col-span-2">
         <button

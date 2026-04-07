@@ -13,7 +13,13 @@ const updateSchema = z.object({
   baptismDate: z.string().nullable().optional(),
   gender: z.string().optional(),
   email: z.string().email().nullable().optional(),
-  phone: z.string().nullable().optional()
+  phone: z.string().nullable().optional(),
+  addressLine1: z.string().nullable().optional(),
+  addressLine2: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  stateCounty: z.string().nullable().optional(),
+  postcode: z.string().nullable().optional(),
+  country: z.enum(["UK", "IN"]).nullable().optional()
 });
 
 type Props = { params: { memberId: string } };
@@ -52,7 +58,13 @@ export async function PATCH(req: Request, { params }: Props) {
     baptism_date: parsed.data.baptismDate,
     gender: parsed.data.gender,
     email: parsed.data.email,
-    phone: parsed.data.phone
+    phone: parsed.data.phone,
+    address_line1: parsed.data.addressLine1,
+    address_line2: parsed.data.addressLine2,
+    city: parsed.data.city,
+    state_county: parsed.data.stateCounty,
+    postcode: parsed.data.postcode,
+    country: parsed.data.country
   }).eq("id", params.memberId).eq("church_id", session.churchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

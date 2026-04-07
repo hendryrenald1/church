@@ -161,7 +161,7 @@ export default async function PastorMemberDetailPage({ params }: Props) {
   ] = await Promise.all([
     supabase
       .from("member")
-      .select("id, first_name, last_name, email, phone, status, joined_date, date_of_birth, baptism_date, branch:branch_id (id, name)")
+      .select("id, first_name, last_name, email, phone, status, joined_date, date_of_birth, baptism_date, address_line1, address_line2, city, state_county, postcode, country, branch:branch_id (id, name)")
       .eq("church_id", session.churchId)
       .eq("id", params.memberId)
       .in("branch_id", branchIds)
@@ -216,7 +216,7 @@ export default async function PastorMemberDetailPage({ params }: Props) {
   type BranchRow = Database["public"]["Tables"]["branch"]["Row"];
   type MemberRecord = Pick<
     MemberRow,
-    "id" | "first_name" | "last_name" | "email" | "phone" | "status" | "joined_date" | "date_of_birth" | "baptism_date"
+    "id" | "first_name" | "last_name" | "email" | "phone" | "status" | "joined_date" | "date_of_birth" | "baptism_date" | "address_line1" | "address_line2" | "city" | "state_county" | "postcode" | "country"
   > & { branch: Pick<BranchRow, "id" | "name"> | null };
 
   type FamilyMemberRow = Database["public"]["Tables"]["family_member"]["Row"];
@@ -450,6 +450,23 @@ export default async function PastorMemberDetailPage({ params }: Props) {
             <Mail className="h-4 w-4 text-gray-400" />
             <span className="text-sm text-gray-900">{member.email ?? "No email"}</span>
           </div>
+          {(member.address_line1 || member.city || member.postcode) && (
+            <div className="flex items-start gap-3 pt-2 border-t">
+              <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+              <div className="text-sm text-gray-900">
+                {member.address_line1 && <p>{member.address_line1}</p>}
+                {member.address_line2 && <p>{member.address_line2}</p>}
+                <p>
+                  {[member.city, member.state_county, member.postcode]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+                <p className="text-gray-500">
+                  {member.country === "IN" ? "India" : "United Kingdom"}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -630,6 +647,39 @@ export default async function PastorMemberDetailPage({ params }: Props) {
                       <InfoField icon={Cake} label="Birth date" value={formatDate(member.date_of_birth)} />
                       <InfoField icon={Droplets} label="Baptism date" value={formatDate(member.baptism_date)} />
                     </div>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <p className="mb-3 text-sm font-medium text-muted-foreground">Address</p>
+                    {member.address_line1 || member.city || member.postcode ? (
+                      <div className="flex items-start gap-3">
+                        <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                        <div className="space-y-1">
+                          {member.address_line1 && <p className="text-sm font-medium">{member.address_line1}</p>}
+                          {member.address_line2 && <p className="text-sm">{member.address_line2}</p>}
+                          <p className="text-sm">
+                            {[member.city, member.state_county, member.postcode]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {member.country === "IN" ? "India" : "United Kingdom"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-3">
+                        <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Address</p>
+                          <p className="text-sm font-medium">
+                            <span className="italic text-muted-foreground">Not provided</span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
