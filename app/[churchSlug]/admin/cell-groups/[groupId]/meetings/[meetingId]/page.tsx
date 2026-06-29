@@ -3,11 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EnhancedAttendanceForm } from "@/components/cell-groups/enhanced-attendance-form";
-import { Calendar, Users } from "lucide-react";
+import { ArrowLeft, BookOpen, Calendar, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { AttendanceStatus, CellGroupMemberRole } from "@/types/cell-group";
 
 type MeetingStatus = "SCHEDULED" | "HELD" | "CANCELLED";
@@ -18,8 +16,11 @@ type MeetingRow = {
   status: MeetingStatus;
   finalized_at: string | null;
   visitor_count: number | null;
+  topic: string | null;
+  scripture_reference: string | null;
+  start_time: string | null;
   group_id: string;
-  cell_group: { id: string; name: string; status: string; schedule_weekday: number | null } | null;
+  cell_group: { id: string; name: string; schedule_weekday: number | null } | null;
 };
 
 type MemberRow = {
@@ -28,11 +29,13 @@ type MemberRow = {
   member: { id: string; first_name: string; last_name: string };
 };
 
-const statusVariants: Record<MeetingStatus, "default" | "secondary" | "outline"> = {
-  HELD: "default",
-  SCHEDULED: "secondary",
-  CANCELLED: "outline",
+const meetingStatusStyle: Record<MeetingStatus, string> = {
+  HELD:      "bg-emerald-100 text-emerald-700",
+  SCHEDULED: "bg-blue-100 text-blue-700",
+  CANCELLED: "bg-muted text-muted-foreground",
 };
+
+const weekdayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
 export default async function CellGroupMeetingPage({
   params,
@@ -51,8 +54,8 @@ export default async function CellGroupMeetingPage({
       supabase
         .from("cell_meeting")
         .select(
-          `id, meeting_date, status, finalized_at, visitor_count,
-           group_id, cell_group:group_id (id, name, status, schedule_weekday)`
+          `id, meeting_date, status, finalized_at, visitor_count, topic, scripture_reference, start_time,
+           group_id, cell_group:group_id (id, name, schedule_weekday)`
         )
         .eq("church_id", session.churchId)
         .eq("id", params.meetingId)
@@ -72,24 +75,17 @@ export default async function CellGroupMeetingPage({
     ]);
 
   const meeting = meetingRaw as MeetingRow | null;
-  if (meetingError || !meeting || meeting.group_id !== params.groupId) {
-    notFound();
-  }
+  if (meetingError || !meeting || meeting.group_id !== params.groupId) notFound();
 
-  const group = meeting.cell_group as { id: string; name: string; status: string; schedule_weekday: number | null };
+  const group = meeting.cell_group as { id: string; name: string; schedule_weekday: number | null };
   const meetingDate = parseISO(meeting.meeting_date);
   const formattedDate = format(meetingDate, "EEEE, MMMM d, yyyy");
+  const shortDate = format(meetingDate, "d MMM yyyy");
 
   const members = (membersData ?? []) as unknown as MemberRow[];
   const attendanceMap = new Map<
     string,
-    {
-      status: AttendanceStatus;
-      isFirstTime?: boolean;
-      broughtVisitor?: boolean;
-      visitorCount?: number;
-      notes?: string;
-    }
+    { status: AttendanceStatus; isFirstTime?: boolean; broughtVisitor?: boolean; visitorCount?: number; notes?: string }
   >();
 
   (attendanceData ?? []).forEach((row: {
@@ -109,18 +105,17 @@ export default async function CellGroupMeetingPage({
     });
   });
 
-  // Build attendees list with roles
-  const attendees = members.map((member) => {
-    const attendance = attendanceMap.get(member.member.id);
+  const attendees = members.map((m) => {
+    const att = attendanceMap.get(m.member.id);
     return {
-      memberId: member.member.id,
-      name: `${member.member.first_name} ${member.member.last_name}`,
-      status: (attendance?.status ?? "UNKNOWN") as AttendanceStatus,
-      role: member.role,
-      isFirstTime: attendance?.isFirstTime,
-      broughtVisitor: attendance?.broughtVisitor,
-      visitorCount: attendance?.visitorCount,
-      notes: attendance?.notes,
+      memberId: m.member.id,
+      name: `${m.member.first_name} ${m.member.last_name}`,
+      status: (att?.status ?? "UNKNOWN") as AttendanceStatus,
+      role: m.role,
+      isFirstTime: att?.isFirstTime,
+      broughtVisitor: att?.broughtVisitor,
+      visitorCount: att?.visitorCount,
+      notes: att?.notes,
     };
   });
 
@@ -128,110 +123,88 @@ export default async function CellGroupMeetingPage({
   const isCancelled = meeting.status === "CANCELLED";
   const isFinalized = !!meeting.finalized_at;
 
+  const scheduleLabel =
+    group.schedule_weekday !== null ? weekdayNames[group.schedule_weekday] : null;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            <Link href={basePath} className="underline-offset-4 hover:underline">
-              Cell Groups
-            </Link>{" "}
-            /{" "}
-            <Link
-              href={`${basePath}/${params.groupId}`}
-              className="underline-offset-4 hover:underline"
-            >
-              {group?.name ?? "Group"}
-            </Link>{" "}
-            /{" "}
-            <Link
-              href={`${basePath}/${params.groupId}/meetings`}
-              className="underline-offset-4 hover:underline"
-            >
-              Meetings
-            </Link>{" "}
-            / {format(meetingDate, "MMM d, yyyy")}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">{formattedDate}</h1>
-            <Badge variant={statusVariants[meeting.status as MeetingStatus]}>
-              {meeting.status}
-            </Badge>
-            {isFinalized && (
-              <Badge variant="outline" className="text-xs">
-                Finalized
-              </Badge>
-            )}
+    <div className="flex flex-col gap-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Link href={basePath} className="hover:text-foreground transition-colors">Cell Groups</Link>
+        <span>/</span>
+        <Link href={`${basePath}/${params.groupId}`} className="hover:text-foreground transition-colors">
+          {group?.name ?? "Group"}
+        </Link>
+        <span>/</span>
+        <span className="text-foreground font-medium">{shortDate}</span>
+      </div>
+
+      {/* Header card */}
+      <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-primary/80 via-primary to-primary/60" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl font-bold tracking-tight">{formattedDate}</h1>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${meetingStatusStyle[meeting.status]}`}>
+                {meeting.status.charAt(0) + meeting.status.slice(1).toLowerCase()}
+              </span>
+              {isFinalized && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                  Finalized
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />{group?.name}
+              </span>
+              {scheduleLabel && (
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />{scheduleLabel}
+                    {meeting.start_time ? ` at ${meeting.start_time}` : ""}
+                  </span>
+                </>
+              )}
+              {meeting.topic && (
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="flex items-center gap-1">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span className="truncate max-w-[200px]">{meeting.topic}</span>
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href={`${basePath}/${params.groupId}`}>
+                <ArrowLeft className="h-3.5 w-3.5" />Back
+              </Link>
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href={`${basePath}/${params.groupId}`}>Back to Group</Link>
-          </Button>
-        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Meeting Info */}
-        <div className="space-y-6">
-          {/* Meeting Details Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Meeting Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Date */}
-              <div className="flex items-start gap-3">
-                <Calendar className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{formattedDate}</p>
-                  <p className="text-sm text-muted-foreground">Meeting Date</p>
-                </div>
-              </div>
-
-              {/* Visitor Count */}
-              {meeting.visitor_count && meeting.visitor_count > 0 && (
-                <div className="flex items-start gap-3">
-                  <Users className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">
-                      {meeting.visitor_count} visitor{meeting.visitor_count !== 1 ? "s" : ""}
-                    </p>
-                    <p className="text-sm text-muted-foreground">External Visitors</p>
-                  </div>
-                </div>
-              )}
-
-            </CardContent>
-          </Card>
-
+      {/* Attendance form */}
+      {isCancelled ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
+          <p className="text-muted-foreground text-sm">
+            This meeting was cancelled. Attendance cannot be recorded.
+          </p>
         </div>
-
-        {/* Right Column - Attendance */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Attendance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isCancelled ? (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">
-                  This meeting was cancelled. Attendance cannot be recorded.
-                </p>
-              </div>
-            ) : (
-              <EnhancedAttendanceForm
-                churchSlug={params.churchSlug}
-                groupId={params.groupId}
-                meetingId={params.meetingId}
-                attendees={attendees}
-                meetingFinalized={isFinalized}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      ) : (
+        <EnhancedAttendanceForm
+          churchSlug={params.churchSlug}
+          groupId={params.groupId}
+          meetingId={params.meetingId}
+          attendees={attendees}
+          meetingFinalized={isFinalized}
+        />
+      )}
     </div>
   );
 }

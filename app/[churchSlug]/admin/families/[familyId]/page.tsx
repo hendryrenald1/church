@@ -6,7 +6,6 @@ import { FamilyMembersSection } from "./_components/family-members-section";
 import { FamilyStatsCard } from "./_components/family-stats-card";
 import { QuickActionsCard } from "./_components/quick-actions-card";
 import { FamilyTimelineCard } from "./_components/family-timeline-card";
-import { FamilySidebarSheet } from "./_components/family-sidebar-sheet";
 import { getSessionUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/supabase";
@@ -119,23 +118,21 @@ export default async function AdminFamilyDetailPage({
   const activities = await getFamilyActivities(params.familyId, session.churchId);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
       <FamilyHeader family={family} churchSlug={params.churchSlug} />
 
-      <div className="lg:hidden">
-        <FamilySidebarSheet family={family} activities={activities} churchSlug={params.churchSlug} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
+        {/* Left column — main content */}
         <div className="space-y-6 lg:col-span-2">
           <FamilyInformationCard family={family} />
           <FamilyMembersSection family={family} churchSlug={params.churchSlug} />
         </div>
 
-        <div className="hidden flex-col space-y-6 lg:flex">
+        {/* Right sidebar */}
+        <div className="space-y-5">
           <FamilyStatsCard family={family} />
           <QuickActionsCard family={family} churchSlug={params.churchSlug} />
-          <Suspense fallback={<div className="rounded-xl border p-6 text-sm text-muted-foreground">Loading activity…</div>}>
+          <Suspense fallback={<div className="rounded-lg border p-5 text-sm text-muted-foreground">Loading activity…</div>}>
             <FamilyTimelineCard activities={activities} />
           </Suspense>
         </div>

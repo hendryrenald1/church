@@ -2,7 +2,12 @@
 
 import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AddressInput, AddressData, Country, getEmptyAddress } from "@/components/forms/address-input";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AddressInput, AddressData, Country } from "@/components/forms/address-input";
+import { User, Building2, MapPin, Calendar, Mail, Phone, Save, ArrowLeft } from "lucide-react";
 
 type Branch = { id: string; name: string };
 type Member = {
@@ -39,8 +44,36 @@ const normalizeDateInput = (value: string | null | undefined) => {
   return value.split("T")[0];
 };
 
-export default function MemberForm({ churchSlug, branches, member, apiBasePath = "admin", redirectPath }: Props) {
+function SectionCard({
+  icon: Icon,
+  title,
+  children
+}: {
+  icon: React.ElementType;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2.5 px-5 py-3.5 border-b bg-muted/30">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-semibold">{title}</span>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+export default function MemberForm({
+  churchSlug,
+  branches,
+  member,
+  apiBasePath = "admin",
+  redirectPath
+}: Props) {
   const router = useRouter();
+  const isEditing = !!member;
+
   const [form, setForm] = useState({
     firstName: member?.first_name ?? "",
     lastName: member?.last_name ?? "",
@@ -52,6 +85,7 @@ export default function MemberForm({ churchSlug, branches, member, apiBasePath =
     dateOfBirth: normalizeDateInput(member?.date_of_birth),
     baptismDate: normalizeDateInput(member?.baptism_date)
   });
+
   const [address, setAddress] = useState<AddressData>({
     addressLine1: member?.address_line1 ?? "",
     addressLine2: member?.address_line2 ?? "",
@@ -60,11 +94,12 @@ export default function MemberForm({ churchSlug, branches, member, apiBasePath =
     postcode: member?.postcode ?? "",
     country: (member?.country as Country) ?? "UK"
   });
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onChange = (field: keyof typeof form) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const setField = (field: keyof typeof form) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
       setForm((prev) => ({ ...prev, [field]: event.target.value }));
     };
 
@@ -73,6 +108,7 @@ export default function MemberForm({ churchSlug, branches, member, apiBasePath =
     if (submitting) return;
     setSubmitting(true);
     setError(null);
+
     const payload = {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -91,7 +127,9 @@ export default function MemberForm({ churchSlug, branches, member, apiBasePath =
       country: address.country
     };
 
-    const endpoint = member ? `/api/${apiBasePath}/members/${member.id}` : `/api/${apiBasePath}/members`;
+    const endpoint = member
+      ? `/api/${apiBasePath}/members/${member.id}`
+      : `/api/${apiBasePath}/members`;
     const method = member ? "PATCH" : "POST";
 
     const res = await fetch(endpoint, {
@@ -112,114 +150,200 @@ export default function MemberForm({ churchSlug, branches, member, apiBasePath =
     router.refresh();
   };
 
+  const cancelHref = redirectPath ?? `/${churchSlug}/${apiBasePath}/members`;
+
   return (
-    <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">First name</span>
-        <input
-          className="rounded-lg border px-3 py-2"
-          required
-          value={form.firstName}
-          onChange={onChange("firstName")}
-        />
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Last name</span>
-        <input
-          className="rounded-lg border px-3 py-2"
-          required
-          value={form.lastName}
-          onChange={onChange("lastName")}
-        />
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Email</span>
-        <input
-          className="rounded-lg border px-3 py-2"
-          type="email"
-          value={form.email}
-          onChange={onChange("email")}
-        />
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Phone</span>
-        <input
-          className="rounded-lg border px-3 py-2"
-          value={form.phone}
-          onChange={onChange("phone")}
-        />
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Branch</span>
-        <select
-          className="rounded-lg border px-3 py-2"
-          value={form.branchId}
-          onChange={onChange("branchId")}
-        >
-          <option value="">Unassigned</option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>
-              {branch.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Status</span>
-        <select
-          className="rounded-lg border px-3 py-2"
-          value={form.status}
-          onChange={onChange("status")}
-        >
-          <option value="ACTIVE">ACTIVE</option>
-          <option value="INACTIVE">INACTIVE</option>
-        </select>
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Joined date</span>
-        <input
-          className="rounded-lg border px-3 py-2"
-          type="date"
-          required
-          value={form.joinedDate}
-          onChange={onChange("joinedDate")}
-        />
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Birth date</span>
-        <input
-          className="rounded-lg border px-3 py-2"
-          type="date"
-          value={form.dateOfBirth}
-          onChange={onChange("dateOfBirth")}
-        />
-      </label>
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">Baptism date</span>
-        <input
-          className="rounded-lg border px-3 py-2"
-          type="date"
-          value={form.baptismDate}
-          onChange={onChange("baptismDate")}
-        />
-      </label>
-      <div className="md:col-span-2 pt-4 border-t mt-2">
-        <h3 className="text-lg font-medium mb-4">Address</h3>
-        <AddressInput
-          value={address}
-          onChange={setAddress}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {/* Personal Information */}
+      <SectionCard icon={User} title="Personal Information">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor="firstName" className="text-xs font-medium">
+              First Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="firstName"
+              required
+              value={form.firstName}
+              onChange={setField("firstName")}
+              placeholder="Jane"
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="lastName" className="text-xs font-medium">
+              Last Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="lastName"
+              required
+              value={form.lastName}
+              onChange={setField("lastName")}
+              placeholder="Smith"
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="email" className="text-xs font-medium flex items-center gap-1.5">
+              <Mail className="h-3 w-3" /> Email Address
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={form.email}
+              onChange={setField("email")}
+              placeholder="jane@example.com"
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="phone" className="text-xs font-medium flex items-center gap-1.5">
+              <Phone className="h-3 w-3" /> Phone Number
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={form.phone}
+              onChange={setField("phone")}
+              placeholder="+44 7700 900000"
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="dateOfBirth" className="text-xs font-medium flex items-center gap-1.5">
+              <Calendar className="h-3 w-3" /> Date of Birth
+            </Label>
+            <Input
+              id="dateOfBirth"
+              type="date"
+              value={form.dateOfBirth}
+              onChange={setField("dateOfBirth")}
+              disabled={submitting}
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Church Details */}
+      <SectionCard icon={Building2} title="Church Details">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium">Branch</Label>
+            <Select
+              value={form.branchId || "none"}
+              onValueChange={(v) => setForm((prev) => ({ ...prev, branchId: v === "none" ? "" : v }))}
+              disabled={submitting}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select branch" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Unassigned</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium">Status</Label>
+            <Select
+              value={form.status}
+              onValueChange={(v) => setForm((prev) => ({ ...prev, status: v as "ACTIVE" | "INACTIVE" }))}
+              disabled={submitting}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">
+                  <span className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Active
+                  </span>
+                </SelectItem>
+                <SelectItem value="INACTIVE">
+                  <span className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                    Inactive
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="joinedDate" className="text-xs font-medium flex items-center gap-1.5">
+              <Calendar className="h-3 w-3" /> Joined Date <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="joinedDate"
+              type="date"
+              required
+              value={form.joinedDate}
+              onChange={setField("joinedDate")}
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="baptismDate" className="text-xs font-medium flex items-center gap-1.5">
+              <Calendar className="h-3 w-3" /> Baptism Date
+            </Label>
+            <Input
+              id="baptismDate"
+              type="date"
+              value={form.baptismDate}
+              onChange={setField("baptismDate")}
+              disabled={submitting}
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Address */}
+      <SectionCard icon={MapPin} title="Address">
+        <AddressInput value={address} onChange={setAddress} disabled={submitting} />
+      </SectionCard>
+
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* Footer Actions */}
+      <div className="flex items-center justify-between pt-1 pb-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push(cancelHref)}
           disabled={submitting}
-        />
-      </div>
-      {error && <div className="md:col-span-2 text-sm text-destructive">{error}</div>}
-      <div className="md:col-span-2">
-        <button
-          type="submit"
-          className="rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:opacity-90 disabled:opacity-60"
-          disabled={submitting}
         >
-          {submitting ? "Saving..." : member ? "Save changes" : "Save"}
-        </button>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Cancel
+        </Button>
+        <Button type="submit" disabled={submitting} className="gap-2 min-w-[130px]">
+          {submitting ? (
+            <>
+              <span className="h-4 w-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
+              Saving…
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              {isEditing ? "Save Changes" : "Add Member"}
+            </>
+          )}
+        </Button>
       </div>
     </form>
   );

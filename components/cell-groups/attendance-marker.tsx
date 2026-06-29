@@ -1,18 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Clock, MessageSquare, ChevronDown, UserPlus, ChevronUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus, CellGroupMemberRole } from "@/types/cell-group";
 
@@ -34,15 +25,62 @@ interface AttendanceMarkerProps {
   disabled?: boolean;
 }
 
-const statusConfig: Record<
-  AttendanceStatus,
-  { label: string; variant: "default" | "destructive" | "secondary" | "outline"; icon?: React.ReactNode }
-> = {
-  PRESENT: { label: "Present", variant: "default", icon: <Check className="h-3 w-3" /> },
-  ABSENT: { label: "Absent", variant: "destructive", icon: <X className="h-3 w-3" /> },
-  LATE: { label: "Late", variant: "secondary", icon: <Clock className="h-3 w-3" /> },
-  EXCUSED: { label: "Excused", variant: "outline", icon: <MessageSquare className="h-3 w-3" /> },
-  UNKNOWN: { label: "Unknown", variant: "outline" },
+const avatarColors = [
+  "bg-blue-600", "bg-violet-600", "bg-emerald-600", "bg-amber-600",
+  "bg-rose-600",  "bg-teal-600",   "bg-indigo-600", "bg-pink-600",
+];
+function getAvatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return avatarColors[Math.abs(h) % avatarColors.length];
+}
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+const STATUS_OPTS: {
+  value: AttendanceStatus;
+  short: string;
+  label: string;
+  activeClass: string;
+  hoverClass: string;
+}[] = [
+  {
+    value: "PRESENT",
+    short: "P", label: "Present",
+    activeClass: "bg-emerald-600 text-white border-emerald-600",
+    hoverClass:  "hover:border-emerald-400 hover:text-emerald-700",
+  },
+  {
+    value: "ABSENT",
+    short: "A", label: "Absent",
+    activeClass: "bg-red-600 text-white border-red-600",
+    hoverClass:  "hover:border-red-400 hover:text-red-700",
+  },
+  {
+    value: "LATE",
+    short: "L", label: "Late",
+    activeClass: "bg-amber-500 text-white border-amber-500",
+    hoverClass:  "hover:border-amber-400 hover:text-amber-700",
+  },
+  {
+    value: "EXCUSED",
+    short: "E", label: "Excused",
+    activeClass: "bg-blue-600 text-white border-blue-600",
+    hoverClass:  "hover:border-blue-400 hover:text-blue-700",
+  },
+];
+
+const ROW_BG: Partial<Record<AttendanceStatus, string>> = {
+  PRESENT: "bg-emerald-50/60",
+  ABSENT:  "bg-red-50/60",
+  LATE:    "bg-amber-50/60",
+  EXCUSED: "bg-blue-50/60",
+};
+
+const ROLE_PILL: Partial<Record<CellGroupMemberRole, string>> = {
+  LEADER:    "bg-primary/10 text-primary",
+  ASSISTANT: "bg-amber-100 text-amber-700",
 };
 
 export function AttendanceMarker({
@@ -51,134 +89,131 @@ export function AttendanceMarker({
   onUpdateDetails,
   disabled = false,
 }: AttendanceMarkerProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const currentStatus = statusConfig[attendee.status];
+  const [expanded, setExpanded] = useState(false);
 
-  const handleStatusClick = (status: AttendanceStatus) => {
-    onStatusChange(attendee.memberId, status);
+  const rowBg = ROW_BG[attendee.status] ?? "";
+
+  const handleToggle = (status: AttendanceStatus) => {
+    onStatusChange(
+      attendee.memberId,
+      attendee.status === status ? "UNKNOWN" : status
+    );
   };
 
   return (
-    <div className="rounded-lg border bg-card">
-      <div className="flex items-center justify-between gap-2 p-3">
-        {/* Member Info */}
+    <div className={cn("border-b last:border-b-0 transition-colors", rowBg)}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Avatar */}
+        <div
+          className={cn(
+            "h-8 w-8 rounded-full text-white flex items-center justify-center text-xs font-bold shrink-0",
+            getAvatarColor(attendee.name)
+          )}
+        >
+          {getInitials(attendee.name)}
+        </div>
+
+        {/* Name + role + sub-info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium truncate">{attendee.name}</p>
-            {attendee.role && attendee.role !== "MEMBER" && (
-              <Badge variant="outline" className="text-xs shrink-0">
-                {attendee.role}
-              </Badge>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-medium truncate">{attendee.name}</span>
+            {attendee.role && attendee.role !== "MEMBER" && ROLE_PILL[attendee.role] && (
+              <span
+                className={cn(
+                  "text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0",
+                  ROLE_PILL[attendee.role]
+                )}
+              >
+                {attendee.role.charAt(0) + attendee.role.slice(1).toLowerCase()}
+              </span>
             )}
           </div>
-          {attendee.isFirstTime && (
-            <p className="text-xs text-green-600">First time visitor</p>
-          )}
-          {attendee.broughtVisitor && (
-            <p className="text-xs text-blue-600">
-              Brought {attendee.visitorCount || 1} visitor{(attendee.visitorCount || 1) > 1 ? "s" : ""}
-            </p>
-          )}
+          <div className="flex items-center gap-2 mt-0.5 min-w-0">
+            {attendee.isFirstTime && (
+              <span className="text-[10px] text-emerald-600 font-medium shrink-0">First time</span>
+            )}
+            {attendee.broughtVisitor && (
+              <span className="text-[10px] text-blue-600 font-medium shrink-0">
+                +{attendee.visitorCount || 1} visitor{(attendee.visitorCount || 1) > 1 ? "s" : ""}
+              </span>
+            )}
+            {attendee.notes && !attendee.isFirstTime && !attendee.broughtVisitor && (
+              <span className="text-[10px] text-muted-foreground truncate">{attendee.notes}</span>
+            )}
+          </div>
         </div>
 
-        {/* Status Buttons */}
+        {/* P / A / L / E toggle buttons */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Main status buttons */}
-          <Button
-            size="sm"
-            variant={attendee.status === "PRESENT" ? "default" : "outline"}
-            className={cn("w-20", attendee.status !== "PRESENT" && "text-muted-foreground")}
-            onClick={() => handleStatusClick("PRESENT")}
-            disabled={disabled}
-          >
-            <Check className="mr-1 h-3 w-3" />
-            Present
-          </Button>
-
-          <Button
-            size="sm"
-            variant={attendee.status === "ABSENT" ? "destructive" : "outline"}
-            className={cn("w-20", attendee.status !== "ABSENT" && "text-muted-foreground")}
-            onClick={() => handleStatusClick("ABSENT")}
-            disabled={disabled}
-          >
-            <X className="mr-1 h-3 w-3" />
-            Absent
-          </Button>
-
-          {/* More options dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="h-8 px-2" disabled={disabled}>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleStatusClick("LATE")}>
-                <Clock className="mr-2 h-4 w-4" />
-                Mark as Late
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleStatusClick("EXCUSED")}>
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Mark as Excused
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleStatusClick("UNKNOWN")}>
-                Reset
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setIsExpanded(!isExpanded)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Additional Options
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Current status badge */}
-          <Badge variant={currentStatus.variant} className="ml-2 min-w-[70px] justify-center">
-            {currentStatus.icon}
-            <span className="ml-1">{currentStatus.label}</span>
-          </Badge>
+          {STATUS_OPTS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => handleToggle(opt.value)}
+              disabled={disabled}
+              title={opt.label}
+              className={cn(
+                "h-7 w-7 rounded-md border text-xs font-bold transition-colors",
+                attendee.status === opt.value
+                  ? opt.activeClass
+                  : cn("border-input text-muted-foreground", opt.hoverClass)
+              )}
+            >
+              {opt.short}
+            </button>
+          ))}
         </div>
+
+        {/* Expand toggle */}
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="h-7 w-7 rounded-md border border-input flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0"
+          title="More options"
+        >
+          {expanded
+            ? <ChevronUp className="h-3.5 w-3.5" />
+            : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
       </div>
 
-      {/* Expanded details section */}
-      {isExpanded && (
-        <div className="border-t px-3 py-3 space-y-3 bg-muted/30">
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm">
+      {/* Expanded details */}
+      {expanded && (
+        <div className="px-4 pb-3 pt-0 space-y-2.5 bg-muted/30 border-t">
+          <div className="flex flex-wrap items-center gap-4 pt-2.5">
+            <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
               <Checkbox
-                checked={attendee.isFirstTime || false}
-                onCheckedChange={(checked) =>
-                  onUpdateDetails(attendee.memberId, { isFirstTime: !!checked })
+                checked={!!attendee.isFirstTime}
+                onCheckedChange={(v) =>
+                  onUpdateDetails(attendee.memberId, { isFirstTime: !!v })
                 }
                 disabled={disabled}
+                className="h-3.5 w-3.5"
               />
               First time visitor
             </label>
 
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
               <Checkbox
-                checked={attendee.broughtVisitor || false}
-                onCheckedChange={(checked) =>
+                checked={!!attendee.broughtVisitor}
+                onCheckedChange={(v) =>
                   onUpdateDetails(attendee.memberId, {
-                    broughtVisitor: !!checked,
-                    visitorCount: checked ? 1 : 0,
+                    broughtVisitor: !!v,
+                    visitorCount: v ? (attendee.visitorCount || 1) : 0,
                   })
                 }
                 disabled={disabled}
+                className="h-3.5 w-3.5"
               />
               Brought a visitor
             </label>
 
             {attendee.broughtVisitor && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Count:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Count:</span>
                 <Input
                   type="number"
                   min={1}
-                  max={10}
-                  className="w-16 h-8"
+                  max={20}
+                  className="w-14 h-6 text-xs px-2"
                   value={attendee.visitorCount || 1}
                   onChange={(e) =>
                     onUpdateDetails(attendee.memberId, {
@@ -192,13 +227,15 @@ export function AttendanceMarker({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground shrink-0">Notes:</span>
+            <span className="text-xs text-muted-foreground shrink-0">Note:</span>
             <Input
-              placeholder="e.g., Shared testimony, Requested prayer"
+              placeholder="e.g., Shared testimony, Requested prayer…"
               value={attendee.notes || ""}
-              onChange={(e) => onUpdateDetails(attendee.memberId, { notes: e.target.value })}
+              onChange={(e) =>
+                onUpdateDetails(attendee.memberId, { notes: e.target.value })
+              }
               disabled={disabled}
-              className="h-8"
+              className="h-7 text-xs"
             />
           </div>
         </div>

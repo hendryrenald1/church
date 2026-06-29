@@ -1,168 +1,72 @@
 "use client";
 
-import { Users, Check, X, Clock, MessageSquare, HelpCircle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types/cell-group";
 
+interface Stats {
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  unknown: number;
+}
+
 interface AttendanceStatsProps {
-  stats: {
-    total: number;
-    present: number;
-    absent: number;
-    late: number;
-    excused: number;
-    unknown: number;
-  };
+  stats: Stats;
   className?: string;
+  /** @deprecated kept for API compatibility — no longer used */
   compact?: boolean;
 }
 
-interface StatItemProps {
-  label: string;
-  count: number;
-  icon: React.ReactNode;
-  colorClass: string;
-  compact?: boolean;
-}
-
-function StatItem({ label, count, icon, colorClass, compact }: StatItemProps) {
-  if (compact) {
-    return (
-      <div className={cn("flex items-center gap-1.5 text-sm", colorClass)}>
-        {icon}
-        <span className="font-medium">{count}</span>
-        <span className="text-muted-foreground">{label}</span>
-      </div>
-    );
-  }
+export function AttendanceStats({ stats, className }: AttendanceStatsProps) {
+  const marked = stats.total - stats.unknown;
+  const rate =
+    stats.total > 0
+      ? Math.round(((stats.present + stats.late) / stats.total) * 100)
+      : 0;
 
   return (
-    <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
-      <div className={cn("flex items-center gap-1.5 mb-1", colorClass)}>
-        {icon}
-        <span className="text-2xl font-semibold">{count}</span>
+    <div className={cn("rounded-lg border bg-card shadow-sm overflow-hidden", className)}>
+      {/* Stat strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-y sm:divide-y-0">
+        {[
+          { label: "Present",  value: stats.present,  cls: "text-emerald-700", bg: "bg-emerald-50/60" },
+          { label: "Absent",   value: stats.absent,   cls: "text-red-700",     bg: "bg-red-50/60"     },
+          { label: "Late",     value: stats.late,     cls: "text-amber-700",   bg: "bg-amber-50/60"   },
+          { label: "Excused",  value: stats.excused,  cls: "text-blue-700",    bg: "bg-blue-50/60"    },
+          { label: "Unmarked", value: stats.unknown,  cls: "text-muted-foreground", bg: ""            },
+        ].map(({ label, value, cls, bg }) => (
+          <div key={label} className={cn("flex flex-col items-center justify-center py-3 px-4", bg)}>
+            <span className={cn("text-2xl font-bold leading-none", cls)}>{value}</span>
+            <span className="text-xs text-muted-foreground mt-0.5">{label}</span>
+          </div>
+        ))}
       </div>
-      <span className="text-xs text-muted-foreground">{label}</span>
+
+      {/* Progress bar */}
+      <div className="px-5 py-3 border-t flex items-center gap-3">
+        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+            style={{ width: `${rate}%` }}
+          />
+        </div>
+        <span className="text-sm font-semibold tabular-nums shrink-0">{rate}%</span>
+        <span className="text-xs text-muted-foreground shrink-0">{marked}/{stats.total} marked</span>
+      </div>
     </div>
   );
 }
 
-export function AttendanceStats({ stats, className, compact = false }: AttendanceStatsProps) {
-  const markedCount = stats.total - stats.unknown;
-  const attendanceRate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-
-  if (compact) {
-    return (
-      <div className={cn("flex flex-wrap items-center gap-4", className)}>
-        <span className="text-sm text-muted-foreground">
-          {markedCount}/{stats.total} marked
-        </span>
-        <div className="flex flex-wrap gap-3">
-          <StatItem
-            label="Present"
-            count={stats.present}
-            icon={<Check className="h-3.5 w-3.5" />}
-            colorClass="text-green-600"
-            compact
-          />
-          <StatItem
-            label="Absent"
-            count={stats.absent}
-            icon={<X className="h-3.5 w-3.5" />}
-            colorClass="text-red-600"
-            compact
-          />
-          {stats.late > 0 && (
-            <StatItem
-              label="Late"
-              count={stats.late}
-              icon={<Clock className="h-3.5 w-3.5" />}
-              colorClass="text-yellow-600"
-              compact
-            />
-          )}
-          {stats.excused > 0 && (
-            <StatItem
-              label="Excused"
-              count={stats.excused}
-              icon={<MessageSquare className="h-3.5 w-3.5" />}
-              colorClass="text-blue-600"
-              compact
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Card className={className}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="font-medium flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Attendance Summary
-          </h4>
-          <div className="text-right">
-            <span className="text-2xl font-semibold">{attendanceRate}%</span>
-            <p className="text-xs text-muted-foreground">attendance rate</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          <StatItem
-            label="Total"
-            count={stats.total}
-            icon={<Users className="h-4 w-4" />}
-            colorClass="text-foreground"
-          />
-          <StatItem
-            label="Present"
-            count={stats.present}
-            icon={<Check className="h-4 w-4" />}
-            colorClass="text-green-600"
-          />
-          <StatItem
-            label="Absent"
-            count={stats.absent}
-            icon={<X className="h-4 w-4" />}
-            colorClass="text-red-600"
-          />
-          <StatItem
-            label="Late"
-            count={stats.late}
-            icon={<Clock className="h-4 w-4" />}
-            colorClass="text-yellow-600"
-          />
-          <StatItem
-            label="Excused"
-            count={stats.excused}
-            icon={<MessageSquare className="h-4 w-4" />}
-            colorClass="text-blue-600"
-          />
-        </div>
-
-        {stats.unknown > 0 && (
-          <p className="mt-3 text-sm text-muted-foreground flex items-center gap-1.5">
-            <HelpCircle className="h-3.5 w-3.5" />
-            {stats.unknown} member{stats.unknown !== 1 ? "s" : ""} not yet marked
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// Helper to calculate stats from attendee list
 export function calculateAttendanceStats(
   attendees: { status: AttendanceStatus }[]
-): AttendanceStatsProps["stats"] {
+): Stats {
   return {
-    total: attendees.length,
+    total:   attendees.length,
     present: attendees.filter((a) => a.status === "PRESENT").length,
-    absent: attendees.filter((a) => a.status === "ABSENT").length,
-    late: attendees.filter((a) => a.status === "LATE").length,
+    absent:  attendees.filter((a) => a.status === "ABSENT").length,
+    late:    attendees.filter((a) => a.status === "LATE").length,
     excused: attendees.filter((a) => a.status === "EXCUSED").length,
     unknown: attendees.filter((a) => a.status === "UNKNOWN").length,
   };

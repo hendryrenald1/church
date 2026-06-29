@@ -3,24 +3,17 @@
 import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreVertical, Send, Trash2 } from "lucide-react";
+import {
+  Building2, Heart, MoreHorizontal, Send, Trash2, Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import type { FamilyDetail } from "../page";
@@ -35,6 +28,9 @@ export function FamilyHeader({ family, churchSlug }: FamilyHeaderProps) {
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const head = family.members.find((m) => m.relationship === "HEAD");
+  const branchName = head?.member.branchName ?? null;
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -51,48 +47,78 @@ export function FamilyHeader({ family, churchSlug }: FamilyHeaderProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <Button variant="ghost" size="sm" onClick={() => router.push(`/${churchSlug}/admin/families`)}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Families
-        </Button>
-        <span className="hidden text-muted-foreground/70 sm:inline">/</span>
-        <span className="text-xs uppercase tracking-wide text-primary">Family Detail</span>
-      </div>
+    <>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <button
+          onClick={() => router.push(`/${churchSlug}/admin/families`)}
+          className="hover:text-foreground transition-colors"
+        >
+          Families
+        </button>
+        <span>/</span>
+        <span className="text-foreground font-medium">{family.familyName}</span>
+      </nav>
 
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{family.familyName}</h1>
-          <p className="text-muted-foreground">
-            {family.members.length} member{family.members.length === 1 ? "" : "s"}
-            {family.weddingAnniversary ? (
-              <span className="ml-2 text-sm text-muted-foreground">
-                • Anniversary {format(new Date(family.weddingAnniversary), "MMMM dd, yyyy")}
+      {/* Header card */}
+      <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-primary/80 via-primary to-primary/60" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 px-6 py-5">
+          {/* Icon */}
+          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Users className="h-7 w-7 text-primary" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight leading-tight">{family.familyName}</h1>
+            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                {family.members.length} member{family.members.length !== 1 ? "s" : ""}
               </span>
-            ) : null}
-          </p>
-        </div>
+              {family.weddingAnniversary && (
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="flex items-center gap-1">
+                    <Heart className="h-3.5 w-3.5 text-rose-400" />
+                    Anniversary {format(new Date(family.weddingAnniversary), "d MMM yyyy")}
+                  </span>
+                </>
+              )}
+              {branchName && (
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="flex items-center gap-1">
+                    <Building2 className="h-3.5 w-3.5" />
+                    {branchName}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => toast({ title: "Message workflow coming soon." })}>
-                <Send className="mr-2 h-4 w-4" />
-                Message Family
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={() => setShowDeleteDialog(true)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Family
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Send className="h-3.5 w-3.5" /> Message
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete family
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -101,7 +127,7 @@ export function FamilyHeader({ family, churchSlug }: FamilyHeaderProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete family?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the family grouping but keeps each member record intact. Are you sure you want to continue?
+              This removes the family grouping but keeps each member record intact. Are you sure?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -116,6 +142,6 @@ export function FamilyHeader({ family, churchSlug }: FamilyHeaderProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

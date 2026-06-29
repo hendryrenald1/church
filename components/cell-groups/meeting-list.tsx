@@ -118,7 +118,7 @@ export function MeetingList({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {displayedMeetings.map((meeting) => (
             <MeetingCard
               key={meeting.id}
